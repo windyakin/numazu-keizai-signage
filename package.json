@@ -1,0 +1,7 @@
+{
+  "name": "numazu-keizai-signage",
+  "private": true,
+  "workspaces": [
+    "packages/*"
+  ]
+}
