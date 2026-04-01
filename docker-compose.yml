@@ -1,0 +1,48 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: signage
+      POSTGRES_USER: signage
+      POSTGRES_PASSWORD: signage
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U signage"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  api:
+    build: ./packages/api
+    environment:
+      DATABASE_URL: postgresql://signage:signage@postgres:5432/signage
+      FEED_URL: ${FEED_URL}
+      FEED_IMAGE_BASE_URL: ${FEED_IMAGE_BASE_URL}
+      FEED_FETCH_INTERVAL_MIN: ${FEED_FETCH_INTERVAL_MIN:-30}
+      PORT: "3000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  signage:
+    build:
+      context: ./packages/signage
+      args:
+        VITE_API_BASE_URL: /api
+        VITE_SLIDE_DURATION_SEC: ${VITE_SLIDE_DURATION_SEC:-8}
+    depends_on:
+      - api
+
+  nginx:
+    image: nginx:alpine
+    ports:
+      - "80:80"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+    depends_on:
+      - api
+      - signage
+
+volumes:
+  postgres_data:
