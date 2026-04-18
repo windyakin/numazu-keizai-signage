@@ -1,3 +1,23 @@
+:root {
+  --color-primary: #0073c4;
+  --color-primary-light: #339bd6;
+  --color-primary-dark: #005a9c;
+
+  --color-bg: #005a9c;
+  --color-text: #fff;
+  --color-text-muted: rgba(255, 255, 255, 0.6);
+  --color-border: rgba(255, 255, 255, 0.1);
+  --color-surface: rgba(255, 255, 255, 0.05);
+  --color-error: #ff6b6b;
+
+  --font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+    "Helvetica Neue", Arial, sans-serif;
+
+  --topbar-height: 6.5vh;
+  --slide-padding-x: 30px;
+  --transition-duration: 0.6s;
+}
+
 *,
 *::before,
 *::after {
@@ -11,10 +31,10 @@ body {
   width: 100vw;
   height: 100vh;
   overflow: hidden;
-  background: #000;
-  color: #fff;
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
-    "Helvetica Neue", Arial, sans-serif;
+  background: var(--color-bg);
+  color: var(--color-text);
+  font-family: var(--font-family);
+  cursor: none;
 }
 
 #app {
@@ -22,87 +42,4 @@ body {
   height: 100%;
   display: flex;
   flex-direction: column;
-}
-
-.topbar {
-  height: 80px;
-  display: flex;
-  align-items: center;
-  justify-content: flex-end;
-  padding: 0 40px;
-  background: rgba(255, 255, 255, 0.05);
-  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-  flex-shrink: 0;
-}
-
-.topbar__date {
-  font-size: 1.2rem;
-  font-weight: 300;
-  margin-right: 24px;
-  opacity: 0.8;
-}
-
-.topbar__time {
-  font-size: 2rem;
-  font-weight: 600;
-  letter-spacing: 0.05em;
-}
-
-.slide-area {
-  flex: 1;
-  overflow: hidden;
-  position: relative;
-}
-
-.slide-area__loading,
-.slide-area__error {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  height: 100%;
-  font-size: 1.5rem;
-  opacity: 0.6;
-}
-
-.slide-area__error {
-  color: #ff6b6b;
-}
-
-.news-slide {
-  width: 100%;
-  height: 100%;
-  display: flex;
-  flex-direction: column;
-}
-
-.news-slide__title {
-  padding: 32px 48px 16px;
-  font-size: 2.2rem;
-  font-weight: 700;
-  line-height: 1.4;
-  flex-shrink: 0;
-}
-
-.news-slide__image-wrapper {
-  flex: 1;
-  padding: 0 48px 32px;
-  overflow: hidden;
-}
-
-.news-slide__image {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  border-radius: 8px;
-}
-
-/* Fade transition */
-.fade-enter-active,
-.fade-leave-active {
-  transition: opacity 0.6s ease;
-}
-
-.fade-enter-from,
-.fade-leave-to {
-  opacity: 0;
 }
