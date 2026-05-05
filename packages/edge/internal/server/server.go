@@ -34,6 +34,7 @@ func (s *Server) Handler() http.Handler {
 
 	r.Get("/api/feed/articles", s.handleGetArticles)
 	r.Get("/api/access/rankings", s.handleGetRankings)
+	r.Get("/media/*", s.handleGetMedia)
 
 	// PoC 用: file:// から XHR/fetch でアクセスして CORS が通ることを検証する
 	// エンドポイント。リクエストヘッダの主要項目をエコーバックする。

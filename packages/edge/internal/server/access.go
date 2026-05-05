@@ -34,7 +34,7 @@ func (s *Server) handleGetRankings(w http.ResponseWriter, r *http.Request) {
 		res.Rankings = append(res.Rankings, rankingDTO{
 			ID:       rk.ID,
 			Title:    rk.Title,
-			ImageURL: joinMediaURL(s.cfg.MediaURLPrefix, rk.ImageURL),
+			ImageURL: buildMediaURL(r, s.cfg.MediaDir, rk.ImageURL),
 			Rank:     rk.Rank,
 			Start:    rk.Start.UTC().Format("2006-01-02T15:04:05.000Z"),
 		})

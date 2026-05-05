@@ -2,7 +2,6 @@ package config
 
 import (
 	"fmt"
-	"net/url"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -16,7 +15,6 @@ type Config struct {
 	MediaDir        string
 	DBPath          string
 	ListenAddr      string
-	MediaURLPrefix  string
 }
 
 func Load() (*Config, error) {
@@ -43,18 +41,12 @@ func Load() (*Config, error) {
 		return nil, fmt.Errorf("resolve DB_PATH: %w", err)
 	}
 
-	mediaURLPrefix := envStr("MEDIA_URL_PREFIX", "")
-	if mediaURLPrefix == "" {
-		mediaURLPrefix = fileURLFromPath(mediaDir)
-	}
-
 	return &Config{
 		UpstreamAPIURL:  upstream,
 		PollIntervalMin: envInt("POLL_INTERVAL_MIN", 5),
 		MediaDir:        mediaDir,
 		DBPath:          dbPath,
 		ListenAddr:      envStr("LISTEN_ADDR", "127.0.0.1:8080"),
-		MediaURLPrefix:  mediaURLPrefix,
 	}, nil
 }
 
@@ -89,18 +81,6 @@ func isGoBuildTmp(dir string) bool {
 	return true
 }
 
-// fileURLFromPath turns an absolute filesystem path into a file:// URL.
-// On Windows "C:\foo\bar" becomes "file:///C:/foo/bar".
-func fileURLFromPath(absPath string) string {
-	u := &url.URL{Scheme: "file"}
-	p := filepath.ToSlash(absPath)
-	if len(p) > 0 && p[0] != '/' {
-		// Windows drive letter path
-		p = "/" + p
-	}
-	u.Path = p
-	return u.String()
-}
 
 func envStr(key, def string) string {
 	if v := os.Getenv(key); v != "" {

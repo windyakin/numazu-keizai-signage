@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"log"
 	"net/http"
-	"strings"
 )
 
 type articleDTO struct {
@@ -32,7 +31,7 @@ func (s *Server) handleGetArticles(w http.ResponseWriter, r *http.Request) {
 		res.Articles = append(res.Articles, articleDTO{
 			ID:          a.ID,
 			Title:       a.Title,
-			ImageURL:    joinMediaURL(s.cfg.MediaURLPrefix, a.ImageURL),
+			ImageURL:    buildMediaURL(r, s.cfg.MediaDir, a.ImageURL),
 			Description: a.Description,
 			Start:       a.Start.UTC().Format("2006-01-02T15:04:05.000Z"),
 		})
@@ -40,13 +39,4 @@ func (s *Server) handleGetArticles(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "application/json")
 	_ = json.NewEncoder(w).Encode(res)
-}
-
-// joinMediaURL composes the URL/path returned to signage by combining
-// MEDIA_URL_PREFIX (e.g. "./media") with media_cache.local_path (e.g. "ab/cd/<sha>.png").
-// Always uses '/' as separator since the result is a URL.
-func joinMediaURL(prefix, localPath string) string {
-	prefix = strings.TrimRight(prefix, "/")
-	localPath = strings.TrimLeft(localPath, "/")
-	return prefix + "/" + localPath
 }
