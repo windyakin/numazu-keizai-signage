@@ -101,7 +101,7 @@ const formattedDate = computed(() => {
 
 .news-slide__description {
   margin-top: 24px;
-  font-size: 1.4rem;
+  font-size: 2rem;
   line-height: 1.7;
   color: var(--color-text-muted);
 }
