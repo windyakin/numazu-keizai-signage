@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed } from "vue";
-import type { RankingItem } from "../../api/access";
+import type { RankingItem } from "../../api/rankings";
 
 const props = defineProps<{
   rankings: RankingItem[];
@@ -14,6 +14,15 @@ const fetchedHour = computed(() => {
   const d = new Date(props.fetchedAt);
   return d.getHours();
 });
+
+function formatDate(start: string): string {
+  const d = new Date(start);
+  return d.toLocaleDateString("ja-JP", {
+    year: "numeric",
+    month: "long",
+    day: "numeric",
+  });
+}
 </script>
 
 <template>
@@ -32,10 +41,6 @@ const fetchedHour = computed(() => {
         :class="`ranking-slide__row--rank${item.rank}`"
         :style="{ animationDelay: `${i * 0.15}s` }"
       >
-        <div class="ranking-slide__info">
-          <span class="ranking-slide__rank">{{ item.rank }}</span>
-          <p class="ranking-slide__item-title">{{ item.title }}</p>
-        </div>
         <div class="ranking-slide__image-area">
           <img
             v-if="item.imageUrl"
@@ -43,6 +48,13 @@ const fetchedHour = computed(() => {
             :alt="item.title"
             class="ranking-slide__image"
           />
+          <span class="ranking-slide__rank">{{ item.rank }}</span>
+        </div>
+        <div class="ranking-slide__info">
+          <time class="ranking-slide__item-date" :datetime="item.start">
+            {{ formatDate(item.start) }}
+          </time>
+          <h3 class="ranking-slide__item-title">{{ item.title }}</h3>
         </div>
       </div>
     </div>
@@ -61,19 +73,20 @@ const fetchedHour = computed(() => {
 
 .ranking-slide__header {
   flex-shrink: 0;
-  padding: 24px var(--slide-padding-x) 16px;
+  padding: max(1.5vh, 1.5vw) var(--slide-padding-x);
+  background: var(--color-text);
 }
 
 .ranking-slide__title {
-  font-size: 2rem;
+  font-size: max(2.5vh, 2.5vw);
   font-weight: 700;
-  color: var(--color-text);
+  color: var(--color-primary-dark);
 }
 
 .ranking-slide__fetched {
-  font-size: 1.2rem;
+  font-size: max(2vh, 2vw);
   font-weight: 400;
-  color: var(--color-text-muted);
+  color: var(--color-primary);
 }
 
 .ranking-slide__rows {
@@ -114,13 +127,15 @@ const fetchedHour = computed(() => {
 .ranking-slide__info {
   flex: 1;
   display: flex;
-  align-items: center;
-  gap: 16px;
-  padding: 12px var(--slide-padding-x);
+  flex-direction: column;
+  justify-content: center;
+  gap: max(0.6vh, 0.6vw);
+  padding: max(1.2vh, 1.2vw) var(--slide-padding-x);
   min-width: 0;
 }
 
 .ranking-slide__image-area {
+  position: relative;
   flex-shrink: 0;
   height: 100%;
   aspect-ratio: 285 / 180;
@@ -135,22 +150,24 @@ const fetchedHour = computed(() => {
 }
 
 .ranking-slide__rank {
-  flex-shrink: 0;
-  width: 48px;
-  height: 48px;
+  position: absolute;
+  top: 6%;
+  left: 4%;
+  width: max(3.5vh, 3.5vw);
+  height: max(3.5vh, 3.5vw);
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 1.4rem;
+  font-size: max(2.4vh, 2.4vw);
   font-weight: 700;
   color: #fff;
   background: var(--rank-color);
   border-radius: 50%;
-  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+  border: 2px solid #fff;
 }
 
 .ranking-slide__item-title {
-  font-size: 1.5vh;
+  font-size: max(2vh, 2vw);
   font-weight: 600;
   line-height: 1.4;
   color: var(--color-text);
@@ -159,6 +176,11 @@ const fetchedHour = computed(() => {
   line-clamp: 3;
   -webkit-box-orient: vertical;
   overflow: hidden;
+}
+
+.ranking-slide__item-date {
+  font-size: max(1vh, 1vw);
+  color: var(--color-text-muted);
 }
 
 @keyframes row-slide-in {

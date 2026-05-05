@@ -1,8 +1,9 @@
 import { parse } from "node-html-parser";
 import { prisma } from "../db.js";
+import { cacheArticleImage } from "./articleImage.js";
 
-async function fetchArticleDescription(feedUrl: string, id: string): Promise<string | null> {
-  const articleUrl = `${feedUrl.replace(/\/+$/, "")}/${id}/`;
+async function fetchArticleDescription(articlesUrl: string, id: string): Promise<string | null> {
+  const articleUrl = `${articlesUrl.replace(/\/+$/, "")}/${id}/`;
   try {
     const res = await fetch(articleUrl);
     if (!res.ok) return null;
@@ -13,7 +14,7 @@ async function fetchArticleDescription(feedUrl: string, id: string): Promise<str
   }
 }
 
-interface FeedItem {
+interface ArticleItem {
   id: string;
   title: string;
   image: string;
@@ -23,8 +24,8 @@ interface FeedItem {
   published: string | null;
 }
 
-interface FeedResponse {
-  items: FeedItem[];
+interface ArticlesResponse {
+  items: ArticleItem[];
   cp: {
     category: string;
     limit: number;
@@ -33,18 +34,18 @@ interface FeedResponse {
   };
 }
 
-export async function fetchFeed(): Promise<number> {
-  const feedUrl = process.env.FEED_URL;
+export async function fetchArticles(): Promise<number> {
+  const articlesUrl = process.env.FEED_URL;
   const imageBaseUrl = process.env.FEED_IMAGE_BASE_URL;
 
-  if (!feedUrl) {
+  if (!articlesUrl) {
     throw new Error("FEED_URL is not set");
   }
   if (!imageBaseUrl) {
     throw new Error("FEED_IMAGE_BASE_URL is not set");
   }
 
-  const response = await fetch(feedUrl, {
+  const response = await fetch(articlesUrl, {
     method: "POST",
     headers: {
       "Content-Type": "application/x-www-form-urlencoded; charset=UTF-8",
@@ -53,29 +54,27 @@ export async function fetchFeed(): Promise<number> {
     body: "mode=async&category=headline&limit=15&from=1",
   });
   if (!response.ok) {
-    throw new Error(`Feed fetch failed: ${response.status} ${response.statusText}`);
+    throw new Error(`Articles fetch failed: ${response.status} ${response.statusText}`);
   }
 
-  const data: FeedResponse = await response.json();
+  const data: ArticlesResponse = await response.json();
 
   for (const item of data.items) {
-    const imageUrl = item.image
-      ? `${imageBaseUrl.replace(/\/+$/, "")}/${item.image.replace(/^\/+/, "")}`
-      : "";
+    const mediaFileId = await cacheArticleImage(item.id, item.photo || item.image);
     const start = new Date(item.start.replace(" ", "T") + "+09:00");
 
     await prisma.article.upsert({
       where: { id: item.id },
       update: {
         title: item.title,
-        imageUrl,
+        mediaFileId,
         start,
         fetchedAt: new Date(),
       },
       create: {
         id: item.id,
         title: item.title,
-        imageUrl,
+        mediaFileId,
         start,
         fetchedAt: new Date(),
       },
@@ -85,7 +84,7 @@ export async function fetchFeed(): Promise<number> {
   // description が未取得の記事を逐次フェッチ
   const noDesc = await prisma.article.findMany({ where: { description: null } });
   for (const article of noDesc) {
-    const description = await fetchArticleDescription(feedUrl, article.id);
+    const description = await fetchArticleDescription(articlesUrl, article.id);
     if (description !== null) {
       await prisma.article.update({ where: { id: article.id }, data: { description } });
     }
@@ -94,18 +93,18 @@ export async function fetchFeed(): Promise<number> {
   return data.items.length;
 }
 
-export function startFeedJob(): void {
+export function startArticlesJob(): void {
   const intervalMin = parseInt(process.env.FEED_FETCH_INTERVAL_MIN || "30", 10);
 
   // 起動時に1回即時実行
-  fetchFeed()
-    .then((count) => console.log(`[feedFetcher] Initial fetch: ${count} articles`))
-    .catch((err) => console.error("[feedFetcher] Initial fetch failed:", err));
+  fetchArticles()
+    .then((count) => console.log(`[articlesFetcher] Initial fetch: ${count} articles`))
+    .catch((err) => console.error("[articlesFetcher] Initial fetch failed:", err));
 
   // 定期実行
   setInterval(() => {
-    fetchFeed()
-      .then((count) => console.log(`[feedFetcher] Fetched ${count} articles`))
-      .catch((err) => console.error("[feedFetcher] Fetch failed:", err));
+    fetchArticles()
+      .then((count) => console.log(`[articlesFetcher] Fetched ${count} articles`))
+      .catch((err) => console.error("[articlesFetcher] Fetch failed:", err));
   }, intervalMin * 60 * 1000);
 }

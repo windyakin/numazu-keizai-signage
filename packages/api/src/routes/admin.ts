@@ -1,8 +1,8 @@
 import { createRoute, OpenAPIHono, z } from "@hono/zod-openapi";
 import { randomUUID } from "node:crypto";
 import { prisma } from "../db.js";
-import { fetchFeed } from "../jobs/feedFetcher.js";
-import { fetchAccessRanking } from "../jobs/accessFetcher.js";
+import { fetchArticles } from "../jobs/articlesFetcher.js";
+import { fetchRankings } from "../jobs/rankingsFetcher.js";
 import {
   createStorageClient,
   deleteObject,
@@ -16,7 +16,7 @@ import {
 const ArticleSchema = z.object({
   id: z.string(),
   title: z.string(),
-  imageUrl: z.string(),
+  imageKey: z.string().nullable(),
   description: z.string().nullable(),
   start: z.string(),
 });
@@ -28,7 +28,7 @@ const ArticlesResponseSchema = z.object({
 const RankingItemSchema = z.object({
   id: z.string(),
   title: z.string(),
-  imageUrl: z.string(),
+  imageKey: z.string().nullable(),
   rank: z.number(),
   start: z.string(),
 });
@@ -53,7 +53,7 @@ const MediaFileSchema = z.object({
   storageKey: z.string(),
   url: z.string(),
   mimeType: z.string(),
-  type: z.enum(["IMAGE", "VIDEO"]),
+  type: z.enum(["IMAGE", "VIDEO", "ARTICLE"]),
   originalName: z.string(),
   sizeBytes: z.string().nullable(),
   uploadedAt: z.string(),
@@ -139,13 +139,13 @@ const getRankingsRoute = createRoute({
   },
 });
 
-const refreshFeedRoute = createRoute({
+const refreshArticlesRoute = createRoute({
   method: "post",
-  path: "/api/admin/feed/refresh",
+  path: "/api/admin/articles/refresh",
   responses: {
     200: {
       content: { "application/json": { schema: RefreshResponseSchema } },
-      description: "フィード再取得結果",
+      description: "記事再取得結果",
     },
     500: {
       content: { "application/json": { schema: ErrorResponseSchema } },
@@ -156,7 +156,7 @@ const refreshFeedRoute = createRoute({
 
 const refreshRankingsRoute = createRoute({
   method: "post",
-  path: "/api/admin/access/refresh",
+  path: "/api/admin/rankings/refresh",
   responses: {
     200: {
       content: { "application/json": { schema: RefreshResponseSchema } },
@@ -362,13 +362,14 @@ export const adminApp = new OpenAPIHono();
 adminApp.openapi(getArticlesRoute, async (c) => {
   const articles = await prisma.article.findMany({
     orderBy: { start: "desc" },
+    include: { mediaFile: true },
   });
 
   return c.json({
     articles: articles.map((a) => ({
       id: a.id,
       title: a.title,
-      imageUrl: a.imageUrl,
+      imageKey: a.mediaFile?.storageKey ?? null,
       description: a.description,
       start: a.start.toISOString(),
     })),
@@ -378,6 +379,7 @@ adminApp.openapi(getArticlesRoute, async (c) => {
 adminApp.openapi(getRankingsRoute, async (c) => {
   const rankings = await prisma.accessRanking.findMany({
     orderBy: { rank: "asc" },
+    include: { article: { include: { mediaFile: true } } },
   });
 
   const fetchedAt =
@@ -385,19 +387,19 @@ adminApp.openapi(getRankingsRoute, async (c) => {
 
   return c.json({
     rankings: rankings.map((r) => ({
-      id: r.id,
-      title: r.title,
-      imageUrl: r.imageUrl,
+      id: r.articleId,
+      title: r.article.title,
+      imageKey: r.article.mediaFile?.storageKey ?? null,
       rank: r.rank,
-      start: r.start.toISOString(),
+      start: r.article.start.toISOString(),
     })),
     fetchedAt,
   });
 });
 
-adminApp.openapi(refreshFeedRoute, async (c) => {
+adminApp.openapi(refreshArticlesRoute, async (c) => {
   try {
-    const fetched = await fetchFeed();
+    const fetched = await fetchArticles();
     return c.json({ fetched }, 200);
   } catch (err) {
     const message = err instanceof Error ? err.message : "Unknown error";
@@ -407,7 +409,7 @@ adminApp.openapi(refreshFeedRoute, async (c) => {
 
 adminApp.openapi(refreshRankingsRoute, async (c) => {
   try {
-    const fetched = await fetchAccessRanking();
+    const fetched = await fetchRankings();
     return c.json({ fetched }, 200);
   } catch (err) {
     const message = err instanceof Error ? err.message : "Unknown error";
@@ -419,6 +421,7 @@ adminApp.openapi(refreshRankingsRoute, async (c) => {
 
 adminApp.openapi(getMediaRoute, async (c) => {
   const files = await prisma.mediaFile.findMany({
+    where: { type: { in: ["IMAGE", "VIDEO"] } },
     orderBy: { uploadedAt: "desc" },
   });
 

@@ -40,20 +40,20 @@ func main() {
 	articles := store.NewArticles(db)
 	rankings := store.NewRankings(db)
 	playlistItems := store.NewPlaylistItems(db)
-	playlistMedia := store.NewPlaylistMedia(db)
+	media := store.NewMedia(db)
 
-	mediaSyncer := sync.NewMediaSyncer(store.NewMedia(db), cfg.MediaDir, 30*time.Second, cfg.UpstreamAPIURL)
-	feedSyncer := sync.NewFeedSyncer(cfg.UpstreamAPIURL, articles, mediaSyncer, interval)
-	accessSyncer := sync.NewAccessSyncer(cfg.UpstreamAPIURL, rankings, mediaSyncer, interval)
-	playlistSyncer := sync.NewPlaylistSyncer(cfg.UpstreamAPIURL, playlistItems, playlistMedia, cfg.MediaDir, interval)
+	mediaSyncer := sync.NewMediaSyncer(media, cfg.MediaDir, 30*time.Second, cfg.UpstreamAPIURL)
+	articlesSyncer := sync.NewArticlesSyncer(cfg.UpstreamAPIURL, articles, mediaSyncer, interval)
+	rankingsSyncer := sync.NewRankingsSyncer(cfg.UpstreamAPIURL, rankings, mediaSyncer, interval)
+	playlistSyncer := sync.NewPlaylistSyncer(cfg.UpstreamAPIURL, playlistItems, mediaSyncer, interval)
 	go mediaSyncer.Run(ctx)
-	go feedSyncer.Run(ctx)
-	go accessSyncer.Run(ctx)
+	go articlesSyncer.Run(ctx)
+	go rankingsSyncer.Run(ctx)
 	go playlistSyncer.Run(ctx)
 
 	srv := &http.Server{
 		Addr:    cfg.ListenAddr,
-		Handler: server.New(cfg, articles, rankings, playlistItems, playlistMedia, feedSyncer, accessSyncer, playlistSyncer).Handler(),
+		Handler: server.New(cfg, articles, rankings, playlistItems, media, articlesSyncer, rankingsSyncer, playlistSyncer).Handler(),
 	}
 
 	go func() {

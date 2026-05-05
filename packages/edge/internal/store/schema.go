@@ -10,7 +10,7 @@ const schema = `
 CREATE TABLE IF NOT EXISTS articles (
   id TEXT PRIMARY KEY,
   title TEXT NOT NULL,
-  image_url TEXT NOT NULL,
+  storage_key TEXT,
   description TEXT,
   start DATETIME NOT NULL,
   fetched_at DATETIME NOT NULL
@@ -19,18 +19,10 @@ CREATE TABLE IF NOT EXISTS articles (
 CREATE TABLE IF NOT EXISTS rankings (
   id TEXT PRIMARY KEY,
   title TEXT NOT NULL,
-  image_url TEXT NOT NULL,
+  storage_key TEXT,
   rank INTEGER NOT NULL,
   start DATETIME NOT NULL,
   fetched_at DATETIME NOT NULL
-);
-
-CREATE TABLE IF NOT EXISTS media_cache (
-  source_url TEXT PRIMARY KEY,
-  local_path TEXT NOT NULL,
-  status TEXT NOT NULL,
-  retries INTEGER NOT NULL DEFAULT 0,
-  downloaded_at DATETIME
 );
 
 CREATE TABLE IF NOT EXISTS playlist_items (
@@ -43,12 +35,14 @@ CREATE TABLE IF NOT EXISTS playlist_items (
   fetched_at DATETIME NOT NULL
 );
 
-CREATE TABLE IF NOT EXISTS playlist_media (
-  storage_key TEXT PRIMARY KEY,
-  local_path TEXT NOT NULL DEFAULT '',
-  mime_type TEXT NOT NULL DEFAULT '',
-  status TEXT NOT NULL DEFAULT 'pending',
-  retries INTEGER NOT NULL DEFAULT 0,
+-- 上流 api の MediaFile (S3 オブジェクト) ローカルキャッシュ。
+-- articles / rankings / playlist_items 全てから参照される単一の物理メディア追跡テーブル。
+CREATE TABLE IF NOT EXISTS media_cache (
+  storage_key   TEXT PRIMARY KEY,
+  local_path    TEXT NOT NULL DEFAULT '',
+  mime_type     TEXT NOT NULL DEFAULT '',
+  status        TEXT NOT NULL DEFAULT 'pending',
+  retries       INTEGER NOT NULL DEFAULT 0,
   downloaded_at DATETIME
 );
 `

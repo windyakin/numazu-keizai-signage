@@ -4,8 +4,8 @@ import { OpenAPIHono } from "@hono/zod-openapi";
 import { signageApp } from "./routes/signage.js";
 import { adminApp } from "./routes/admin.js";
 import { mediaApp } from "./routes/media.js";
-import { startFeedJob } from "./jobs/feedFetcher.js";
-import { startAccessJob } from "./jobs/accessFetcher.js";
+import { startArticlesJob } from "./jobs/articlesFetcher.js";
+import { startRankingsJob } from "./jobs/rankingsFetcher.js";
 
 const app = new OpenAPIHono();
 
@@ -26,6 +26,6 @@ const port = parseInt(process.env.PORT || "3000", 10);
 
 serve({ fetch: app.fetch, port }, () => {
   console.log(`API server running on port ${port}`);
-  startFeedJob();
-  startAccessJob();
+  startArticlesJob();
+  startRankingsJob();
 });

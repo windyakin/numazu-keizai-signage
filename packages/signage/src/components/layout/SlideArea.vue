@@ -5,10 +5,10 @@ import {
   type PlaylistItem,
   type MediaPayload,
 } from "../../api/playlist";
-import { fetchArticles, type Article } from "../../api/feed";
-import { fetchRankings, type RankingsData } from "../../api/access";
+import { fetchArticles, type Article } from "../../api/articles";
+import { fetchRankings, type RankingsData } from "../../api/rankings";
 import NewsArticleSlide from "../slides/NewsArticleSlide.vue";
-import AccessRankingSlide from "../slides/AccessRankingSlide.vue";
+import RankingSlide from "../slides/RankingSlide.vue";
 import ImageSlide from "../slides/ImageSlide.vue";
 import VideoSlide from "../slides/VideoSlide.vue";
 
@@ -181,7 +181,7 @@ function applyDebugHash(): boolean {
   const hash = window.location.hash.replace("#", "");
   if (!hash) return false;
 
-  const match = hash.match(/^item-(\d+)$/);
+  const match = hash.match(/^\/(\d+)$/);
   if (match) {
     const idx = parseInt(match[1], 10);
     if (idx >= 0 && idx < playlistItems.value.length) {
@@ -239,7 +239,7 @@ onUnmounted(() => {
           :article="currentArticle"
           :index="currentIndex"
         />
-        <AccessRankingSlide
+        <RankingSlide
           v-else-if="currentItem.type === 'RANKING' && currentRanking"
           :key="`ranking-${currentItem.id}`"
           :rankings="currentRanking.rankings"

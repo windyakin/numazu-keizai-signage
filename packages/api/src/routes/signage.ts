@@ -7,7 +7,7 @@ import { createStorageClient, getObject } from "../storage.js";
 const ArticleSchema = z.object({
   id: z.string(),
   title: z.string(),
-  imageUrl: z.string(),
+  imageKey: z.string().nullable(),
   description: z.string().nullable(),
   start: z.string(),
 });
@@ -19,7 +19,7 @@ const ArticlesResponseSchema = z.object({
 const RankingItemSchema = z.object({
   id: z.string(),
   title: z.string(),
-  imageUrl: z.string(),
+  imageKey: z.string().nullable(),
   rank: z.number(),
   start: z.string(),
 });
@@ -120,13 +120,15 @@ export const signageApp = new OpenAPIHono();
 signageApp.openapi(getArticlesRoute, async (c) => {
   const articles = await prisma.article.findMany({
     orderBy: { start: "desc" },
+    take: 15,
+    include: { mediaFile: true },
   });
 
   return c.json({
     articles: articles.map((a) => ({
       id: a.id,
       title: a.title,
-      imageUrl: a.imageUrl,
+      imageKey: a.mediaFile?.storageKey ?? null,
       description: a.description,
       start: a.start.toISOString(),
     })),
@@ -136,6 +138,7 @@ signageApp.openapi(getArticlesRoute, async (c) => {
 signageApp.openapi(getRankingsRoute, async (c) => {
   const rankings = await prisma.accessRanking.findMany({
     orderBy: { rank: "asc" },
+    include: { article: { include: { mediaFile: true } } },
   });
 
   const fetchedAt =
@@ -143,11 +146,11 @@ signageApp.openapi(getRankingsRoute, async (c) => {
 
   return c.json({
     rankings: rankings.map((r) => ({
-      id: r.id,
-      title: r.title,
-      imageUrl: r.imageUrl,
+      id: r.articleId,
+      title: r.article.title,
+      imageKey: r.article.mediaFile?.storageKey ?? null,
       rank: r.rank,
-      start: r.start.toISOString(),
+      start: r.article.start.toISOString(),
     })),
     fetchedAt,
   });

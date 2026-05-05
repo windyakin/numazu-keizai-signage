@@ -16,8 +16,8 @@ packages/admin/
 │   ├── App.vue                 # <RouterView /> のみ
 │   ├── api/                    # REST クライアント（fetch ラッパー）
 │   │   ├── client.ts           # 共通 apiFetch<T> — ベース URL 管理はここ
-│   │   ├── feed.ts             # 記事 API (/api/admin/articles など)
-│   │   └── access.ts           # ランキング API (/api/admin/rankings など)
+│   │   ├── articles.ts         # 記事 API (/api/admin/articles など)
+│   │   └── rankings.ts         # ランキング API (/api/admin/rankings など)
 │   ├── stores/                 # Pinia ストア
 │   ├── router/
 │   │   └── index.ts            # Vue Router（Hash History）
@@ -40,7 +40,7 @@ packages/admin/
 
 ## API クライアント ([src/api/](src/api/))
 
-バックエンド側の admin 専用ルート（`/api/admin/`）と通信する。既存の `/api/feed/` や `/api/access/` は **使わない**。
+バックエンド側の admin 専用ルート（`/api/admin/`）と通信する。signage 用ルート（`/api/signage/`）は **使わない**。
 
 - `VITE_API_BASE_URL`（デフォルト `/api/admin`）を起点にする。
 - すべてのリクエストは [src/api/client.ts](src/api/client.ts) の `apiFetch<T>(path, init?)` を経由する。直接 `fetch` は呼ばない。
@@ -52,9 +52,9 @@ packages/admin/
 | 関数 | メソッド | パス（base からの相対） | 説明 |
 |------|---------|----------------------|------|
 | `fetchArticles()` | GET | `/articles` | 記事一覧取得 |
-| `refreshFeed()` | POST | `/feed/refresh` | フィードを手動再取得 |
+| `refreshArticles()` | POST | `/articles/refresh` | 記事を手動再取得 |
 | `fetchRankings()` | GET | `/rankings` | ランキング取得 |
-| `refreshRankings()` | POST | `/access/refresh` | ランキングを手動再取得 |
+| `refreshRankings()` | POST | `/rankings/refresh` | ランキングを手動再取得 |
 
 ---
 

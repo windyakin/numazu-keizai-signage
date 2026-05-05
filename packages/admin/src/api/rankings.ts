@@ -3,7 +3,7 @@ import { apiFetch } from './client'
 export interface RankingItem {
   id: string
   title: string
-  imageUrl: string
+  imageKey: string | null
   rank: number
   start: string
 }
@@ -18,5 +18,5 @@ export async function fetchRankings(): Promise<RankingsData> {
 }
 
 export async function refreshRankings(): Promise<{ count: number }> {
-  return apiFetch('/access/refresh', { method: 'POST' })
+  return apiFetch('/rankings/refresh', { method: 'POST' })
 }

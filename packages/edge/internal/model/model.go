@@ -5,7 +5,7 @@ import "time"
 type Article struct {
 	ID          string    `json:"id"`
 	Title       string    `json:"title"`
-	ImageURL    string    `json:"imageUrl"`
+	ImageKey    *string   `json:"imageKey"`
 	Description *string   `json:"description"`
 	Start       time.Time `json:"start"`
 }
@@ -17,7 +17,7 @@ type ArticlesResponse struct {
 type Ranking struct {
 	ID       string    `json:"id"`
 	Title    string    `json:"title"`
-	ImageURL string    `json:"imageUrl"`
+	ImageKey *string   `json:"imageKey"`
 	Rank     int       `json:"rank"`
 	Start    time.Time `json:"start"`
 }

@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed } from "vue";
-import type { Article } from "../../api/feed";
+import type { Article } from "../../api/articles";
 
 const props = defineProps<{
   article: Article;

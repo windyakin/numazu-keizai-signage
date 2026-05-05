@@ -17,8 +17,9 @@ packages/signage/
 │   ├── main.ts                # createApp のみ
 │   ├── App.vue                # TopBar + SlideArea を並べるだけ
 │   ├── api/                   # REST クライアント（fetch ラッパ）
-│   │   ├── feed.ts
-│   │   └── access.ts
+│   │   ├── articles.ts
+│   │   ├── rankings.ts
+│   │   └── playlist.ts
 │   ├── composables/           # 再利用ロジック
 │   │   └── useClock.ts
 │   ├── components/
@@ -27,7 +28,9 @@ packages/signage/
 │   │   │   └── SlideArea.vue  # スライドショー制御の本体
 │   │   └── slides/            # 1枚のスライド = 1ファイル
 │   │       ├── NewsArticleSlide.vue
-│   │       └── AccessRankingSlide.vue
+│   │       ├── RankingSlide.vue
+│   │       ├── ImageSlide.vue
+│   │       └── VideoSlide.vue
 │   └── assets/
 │       ├── signage.css        # グローバル CSS（CSS 変数をここで定義）
 │       └── logo.png
@@ -48,7 +51,7 @@ packages/signage/
 ## スライドショー制御（[SlideArea.vue](src/components/layout/SlideArea.vue)）
 
 - 記事を `VITE_SLIDE_DURATION_SEC`（デフォルト8秒）ごとに切り替える。
-- 記事が一巡したら `AccessRankingSlide` を `VITE_RANKING_DURATION_SEC`（デフォルト16秒）表示し、記事の先頭に戻る。
+- 記事が一巡したら `RankingSlide` を `VITE_RANKING_DURATION_SEC`（デフォルト16秒）表示し、記事の先頭に戻る。
 - タイマーは `setTimeout` を 1 本だけ保持し、`scheduleNext(seconds)` で使い回す。`setInterval` は使わない（スライド種別ごとに尺が違うため）。
 - プレイリストの再取得はループが先頭に戻った瞬間（wrap-around 検知）に `fetchNextPlaylist()` を発火し、結果は `pendingPlaylist` に保留して**次のループ完了時**に `playlistItems` へ反映する。再生中のループ構成は変えない。
 - `playlistItems` が空のときだけ別途 30秒間隔の `retryWhenEmpty()` が走り、edge から取得を試みる。items がある状態の fetch 失敗は silent ignore で既存プレイリストを維持する。
@@ -56,8 +59,7 @@ packages/signage/
 - `<Transition name="slide" mode="out-in">` で CSS フェード。遷移時間は `--transition-duration`。
 - API 取得失敗時はエラーメッセージを全面表示しループは始めない。
 - デバッグ用途で URL ハッシュによる固定表示をサポート:
-  - `#access-ranking` → ランキングスライドを固定。
-  - `#article-{N}` → N 番目の記事を固定（0 始まり）。
+  - `#/{N}` → プレイリストの N 番目のアイテムを固定（0 始まり）。
   - `debugFixed` が立っている間はタイマーを起動しない。
 
 ---

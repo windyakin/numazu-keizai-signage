@@ -51,9 +51,9 @@ func (s *Server) handleGetPlaylist(w http.ResponseWriter, r *http.Request) {
 			// payload is always null; signage fetches data independently
 		case model.PlaylistItemImage, model.PlaylistItemVideo:
 			if item.StorageKey != nil {
-				localPath, err := s.playlistMedia.LocalPath(ctx, *item.StorageKey)
+				localPath, err := s.media.LocalPath(ctx, *item.StorageKey)
 				if err != nil {
-					log.Printf("playlist media local path %s: %v", *item.StorageKey, err)
+					log.Printf("media local path %s: %v", *item.StorageKey, err)
 				} else if localPath != "" {
 					mimeType := ""
 					if item.MimeType != nil {

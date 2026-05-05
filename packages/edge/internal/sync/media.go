@@ -20,7 +20,7 @@ import (
 	"github.com/windyakin/numazu-keizai-signage/packages/edge/internal/store"
 )
 
-const mediaProxyPath = "/api/media/proxy"
+const mediaEndpointPath = "/api/signage/media"
 
 const (
 	mediaMaxRetries = 3
@@ -47,9 +47,10 @@ func NewMediaSyncer(media *store.Media, mediaDir string, interval time.Duration,
 	}
 }
 
-// Enqueue tracks the URL as downloadable and triggers a drain.
-func (m *MediaSyncer) Enqueue(ctx context.Context, sourceURL string) error {
-	if err := m.media.Enqueue(ctx, sourceURL); err != nil {
+// Enqueue tracks the storage key as downloadable and triggers a drain.
+// mimeType is optional ("" when the upstream did not provide one).
+func (m *MediaSyncer) Enqueue(ctx context.Context, storageKey, mimeType string) error {
+	if err := m.media.Enqueue(ctx, storageKey, mimeType); err != nil {
 		return err
 	}
 	m.trig()
@@ -117,23 +118,26 @@ func (m *MediaSyncer) drain(ctx context.Context) {
 }
 
 func (m *MediaSyncer) download(ctx context.Context, e store.MediaEntry) {
-	localPath, err := m.fetch(ctx, e.SourceURL)
+	localPath, err := m.fetch(ctx, e.StorageKey, e.MimeType)
 	if err != nil {
-		log.Printf("media download %s: %v", e.SourceURL, err)
-		if markErr := m.media.MarkFailed(ctx, e.SourceURL); markErr != nil {
+		log.Printf("media download %s: %v", e.StorageKey, err)
+		if markErr := m.media.MarkFailed(ctx, e.StorageKey); markErr != nil {
 			log.Printf("media mark failed: %v", markErr)
 		}
 		return
 	}
-	if err := m.media.MarkReady(ctx, e.SourceURL, localPath, time.Now().UTC()); err != nil {
+	if err := m.media.MarkReady(ctx, e.StorageKey, localPath, time.Now().UTC()); err != nil {
 		log.Printf("media mark ready: %v", err)
 	}
 }
 
-// fetch downloads the URL via the api proxy to MEDIA_DIR/<ab>/<cd>/<sha>.<ext>
-// and returns the path relative to MEDIA_DIR (e.g. "ab/cd/abcdef...jpg").
-func (m *MediaSyncer) fetch(ctx context.Context, sourceURL string) (string, error) {
-	downloadURL := m.upstreamAPIURL + mediaProxyPath + "?url=" + url.QueryEscape(sourceURL)
+// fetch downloads the object via the upstream `/api/signage/media?key=<storageKey>`
+// endpoint to MEDIA_DIR/<ab>/<cd>/<sha>.<ext> and returns the path relative to
+// MEDIA_DIR (e.g. "ab/cd/abcdef...jpg"). mimeType is used as a fallback for
+// extension detection only when the storage key has no extension and the
+// upstream Content-Type is missing.
+func (m *MediaSyncer) fetch(ctx context.Context, storageKey, mimeType string) (string, error) {
+	downloadURL := m.upstreamAPIURL + mediaEndpointPath + "?key=" + url.QueryEscape(storageKey)
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, downloadURL, nil)
 	if err != nil {
 		return "", err
@@ -147,9 +151,13 @@ func (m *MediaSyncer) fetch(ctx context.Context, sourceURL string) (string, erro
 		return "", fmt.Errorf("status %d", resp.StatusCode)
 	}
 
-	sum := sha256.Sum256([]byte(sourceURL))
+	contentType := resp.Header.Get("Content-Type")
+	if contentType == "" {
+		contentType = mimeType
+	}
+	sum := sha256.Sum256([]byte(storageKey))
 	hash := hex.EncodeToString(sum[:])
-	ext := pickExtension(sourceURL, resp.Header.Get("Content-Type"))
+	ext := pickExtension(storageKey, contentType)
 
 	relDir := filepath.Join(hash[0:2], hash[2:4])
 	relPath := filepath.Join(relDir, hash+ext)
@@ -182,8 +190,34 @@ func (m *MediaSyncer) fetch(ctx context.Context, sourceURL string) (string, erro
 	return filepath.ToSlash(relPath), nil
 }
 
-func pickExtension(sourceURL, contentType string) string {
-	if u, err := url.Parse(sourceURL); err == nil {
+// Sweep deletes media_cache rows and on-disk files whose storage_key is no
+// longer referenced by any of articles / rankings / playlist_items. Returns
+// the number of entries actually removed. Best-effort: filesystem and DB
+// errors per entry are logged and the loop continues.
+func (m *MediaSyncer) Sweep(ctx context.Context) (int, error) {
+	orphans, err := m.media.ListOrphans(ctx)
+	if err != nil {
+		return 0, err
+	}
+	removed := 0
+	for _, e := range orphans {
+		if e.LocalPath != "" {
+			abs := filepath.Join(m.mediaDir, filepath.FromSlash(e.LocalPath))
+			if err := os.Remove(abs); err != nil && !os.IsNotExist(err) {
+				log.Printf("media sweep remove %s: %v", abs, err)
+			}
+		}
+		if err := m.media.Delete(ctx, e.StorageKey); err != nil {
+			log.Printf("media sweep delete %s: %v", e.StorageKey, err)
+			continue
+		}
+		removed++
+	}
+	return removed, nil
+}
+
+func pickExtension(storageKey, contentType string) string {
+	if u, err := url.Parse(storageKey); err == nil {
 		if ext := path.Ext(u.Path); ext != "" && len(ext) <= 5 {
 			return strings.ToLower(ext)
 		}

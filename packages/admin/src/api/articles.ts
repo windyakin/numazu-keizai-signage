@@ -3,7 +3,7 @@ import { apiFetch } from './client'
 export interface Article {
   id: string
   title: string
-  imageUrl: string
+  imageKey: string | null
   description: string | null
   start: string
 }
@@ -17,6 +17,6 @@ export async function fetchArticles(): Promise<Article[]> {
   return data.articles
 }
 
-export async function refreshFeed(): Promise<{ count: number }> {
-  return apiFetch('/feed/refresh', { method: 'POST' })
+export async function refreshArticles(): Promise<{ count: number }> {
+  return apiFetch('/articles/refresh', { method: 'POST' })
 }

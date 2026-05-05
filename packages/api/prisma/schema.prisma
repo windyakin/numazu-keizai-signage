@@ -8,20 +8,22 @@ datasource db {
 }
 
 model Article {
-  id          String   @id
+  id          String         @id
   title       String
-  imageUrl    String
+  mediaFileId String?
+  mediaFile   MediaFile?     @relation(fields: [mediaFileId], references: [id])
   start       DateTime
-  fetchedAt   DateTime @default(now())
+  fetchedAt   DateTime       @default(now())
   description String?
+  ranking     AccessRanking?
+
+  @@index([start])
 }
 
 model AccessRanking {
-  id        String   @id
-  title     String
-  imageUrl  String
+  articleId String   @id
+  article   Article  @relation(fields: [articleId], references: [id], onDelete: Cascade)
   rank      Int
-  start     DateTime
   fetchedAt DateTime @default(now())
 }
 
@@ -34,6 +36,7 @@ model MediaFile {
   sizeBytes     BigInt?
   uploadedAt    DateTime       @default(now())
   playlistItems PlaylistItem[]
+  articles      Article[]
 }
 
 model Playlist {
@@ -71,4 +74,5 @@ enum PlaylistItemType {
 enum MediaFileType {
   IMAGE
   VIDEO
+  ARTICLE
 }

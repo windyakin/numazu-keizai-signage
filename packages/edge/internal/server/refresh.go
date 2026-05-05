@@ -13,8 +13,8 @@ type refreshResultDTO struct {
 }
 
 type refreshResponseDTO struct {
-	Feed     refreshResultDTO `json:"feed"`
-	Access   refreshResultDTO `json:"access"`
+	Articles refreshResultDTO `json:"articles"`
+	Rankings refreshResultDTO `json:"rankings"`
 	Playlist refreshResultDTO `json:"playlist"`
 }
 
@@ -22,13 +22,13 @@ func (s *Server) handleRefresh(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
 	res := refreshResponseDTO{
-		Feed:     runRefresh(ctx, "feed", s.feedSyncer.Refresh),
-		Access:   runRefresh(ctx, "access", s.accessSyncer.Refresh),
+		Articles: runRefresh(ctx, "articles", s.articlesSyncer.Refresh),
+		Rankings: runRefresh(ctx, "rankings", s.rankingsSyncer.Refresh),
 		Playlist: runRefresh(ctx, "playlist", s.playlistSyncer.Refresh),
 	}
 
 	status := http.StatusOK
-	if !res.Feed.OK || !res.Access.OK || !res.Playlist.OK {
+	if !res.Articles.OK || !res.Rankings.OK || !res.Playlist.OK {
 		status = http.StatusInternalServerError
 	}
 

@@ -22,9 +22,9 @@ type Server struct {
 	articles       *store.Articles
 	rankings       *store.Rankings
 	playlistItems  *store.PlaylistItems
-	playlistMedia  *store.PlaylistMedia
-	feedSyncer     Refresher
-	accessSyncer   Refresher
+	media          *store.Media
+	articlesSyncer Refresher
+	rankingsSyncer Refresher
 	playlistSyncer Refresher
 }
 
@@ -33,9 +33,9 @@ func New(
 	articles *store.Articles,
 	rankings *store.Rankings,
 	playlistItems *store.PlaylistItems,
-	playlistMedia *store.PlaylistMedia,
-	feedSyncer Refresher,
-	accessSyncer Refresher,
+	media *store.Media,
+	articlesSyncer Refresher,
+	rankingsSyncer Refresher,
 	playlistSyncer Refresher,
 ) *Server {
 	return &Server{
@@ -43,9 +43,9 @@ func New(
 		articles:       articles,
 		rankings:       rankings,
 		playlistItems:  playlistItems,
-		playlistMedia:  playlistMedia,
-		feedSyncer:     feedSyncer,
-		accessSyncer:   accessSyncer,
+		media:          media,
+		articlesSyncer: articlesSyncer,
+		rankingsSyncer: rankingsSyncer,
 		playlistSyncer: playlistSyncer,
 	}
 }

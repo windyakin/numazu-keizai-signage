@@ -28,10 +28,15 @@ func (s *Server) handleGetArticles(w http.ResponseWriter, r *http.Request) {
 
 	res := articlesResponse{Articles: make([]articleDTO, 0, len(articles))}
 	for _, a := range articles {
+		// ListReady は ImageKey フィールドにキャッシュ済みファイルの local_path を詰めて返す。
+		localPath := ""
+		if a.ImageKey != nil {
+			localPath = *a.ImageKey
+		}
 		res.Articles = append(res.Articles, articleDTO{
 			ID:          a.ID,
 			Title:       a.Title,
-			ImageURL:    buildMediaURL(r, s.cfg.MediaDir, a.ImageURL),
+			ImageURL:    buildMediaURL(r, s.cfg.MediaDir, localPath),
 			Description: a.Description,
 			Start:       a.Start.UTC().Format("2006-01-02T15:04:05.000Z"),
 		})

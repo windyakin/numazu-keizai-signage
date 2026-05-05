@@ -31,10 +31,15 @@ func (s *Server) handleGetRankings(w http.ResponseWriter, r *http.Request) {
 		Rankings: make([]rankingDTO, 0, len(rankings)),
 	}
 	for _, rk := range rankings {
+		// ListReady は ImageKey フィールドにキャッシュ済みファイルの local_path を詰めて返す。
+		localPath := ""
+		if rk.ImageKey != nil {
+			localPath = *rk.ImageKey
+		}
 		res.Rankings = append(res.Rankings, rankingDTO{
 			ID:       rk.ID,
 			Title:    rk.Title,
-			ImageURL: buildMediaURL(r, s.cfg.MediaDir, rk.ImageURL),
+			ImageURL: buildMediaURL(r, s.cfg.MediaDir, localPath),
 			Rank:     rk.Rank,
 			Start:    rk.Start.UTC().Format("2006-01-02T15:04:05.000Z"),
 		})

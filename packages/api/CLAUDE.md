@@ -15,11 +15,12 @@ packages/api/
 │   ├── index.ts               # エントリポイント。OpenAPIHono を構築しジョブを起動
 │   ├── db.ts                  # PrismaClient のシングルトン
 │   ├── routes/                # リソース単位でルータを分割
-│   │   ├── feed.ts            # /api/feed/*
-│   │   └── access.ts          # /api/access/*
+│   │   ├── signage.ts         # /api/signage/*
+│   │   ├── admin.ts           # /api/admin/*
+│   │   └── media.ts           # /api/signage/media など
 │   └── jobs/                  # 定期実行ジョブ
-│       ├── feedFetcher.ts     # フィード取得
-│       └── accessFetcher.ts   # アクセスランキング取得
+│       ├── articlesFetcher.ts # 記事一覧取得
+│       └── rankingsFetcher.ts # アクセスランキング取得
 ├── Dockerfile
 ├── entrypoint.sh              # prisma migrate deploy → node 起動
 ├── tsconfig.json
@@ -54,12 +55,12 @@ packages/api/
 
 ## 定期ジョブの実装パターン
 
-[src/jobs/feedFetcher.ts](src/jobs/feedFetcher.ts) と [src/jobs/accessFetcher.ts](src/jobs/accessFetcher.ts) が参照実装。
+[src/jobs/articlesFetcher.ts](src/jobs/articlesFetcher.ts) と [src/jobs/rankingsFetcher.ts](src/jobs/rankingsFetcher.ts) が参照実装。
 
-- `fetch{Resource}()` を純粋な非同期関数として export（`POST /api/{resource}/refresh` からも再利用する）。
+- `fetch{Resource}()` を純粋な非同期関数として export（`POST /api/admin/{resource}/refresh` からも再利用する）。
 - `start{Resource}Job()` で起動時1回 + `setInterval` で定期実行。ジョブキューは入れない。
 - 失敗しても起動を止めない（`console.error` してプロセスは生かす）。
-- 取得間隔は `FEED_FETCH_INTERVAL_MIN`（デフォルト30分）を共用している。
+- 取得間隔は `FEED_FETCH_INTERVAL_MIN`（デフォルト30分）を articles / rankings ジョブで共用している。
 - アクセスランキングは毎回 `deleteMany()` してから insert する（差分 upsert ではなく総入れ替え）。記事は `upsert`（id キー）。
 
 外部フィードへのリクエストは `POST + x-www-form-urlencoded + X-Requested-With: XMLHttpRequest` が必須。素の GET だと返らない。
@@ -68,7 +69,7 @@ packages/api/
 
 ## ESM 注意点
 
-- `tsconfig` は ESM 出力。相対 import には必ず `.js` 拡張子を付ける（`./routes/feed.js`）。TS ファイルでも `.js` と書く。
+- `tsconfig` は ESM 出力。相対 import には必ず `.js` 拡張子を付ける（`./routes/admin.js`）。TS ファイルでも `.js` と書く。
 - 実行は `tsx`（ビルド無しで TS を直接実行）。開発は `npm run dev`（watch）。
 
 ---
@@ -83,7 +84,7 @@ packages/api/
 | `FEED_URL` | 必須 | フィード POST 先。未設定だとジョブが throw |
 | `FEED_IMAGE_BASE_URL` | 必須 | `{base}/{image}` で画像 URL を組み立てる |
 | `ACCESS_URL` | 必須 | アクセスランキング POST 先 |
-| `FEED_FETCH_INTERVAL_MIN` | 任意 | デフォルト 30。feed / access 共用 |
+| `FEED_FETCH_INTERVAL_MIN` | 任意 | デフォルト 30。articles / rankings ジョブ共用 |
 | `PORT` | 任意 | デフォルト 3000 |
 
 ---
