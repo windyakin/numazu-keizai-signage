@@ -34,11 +34,12 @@ export type CreatePlaylistItemBody =
   | { type: 'IMAGE'; durationSec: number; mediaFileId: string; isFullscreen?: boolean }
   | { type: 'VIDEO'; durationSec?: null; mediaFileId: string; isFullscreen?: boolean }
 
-// ── Playlist CRUD ─────────────────────────────────────────────────────────────
 export interface UpdatePlaylistItemBody {
   durationSec?: number | null
   isFullscreen?: boolean
 }
+
+// Playlist CRUD
 
 export async function fetchPlaylists(): Promise<Playlist[]> {
   const data = await apiFetch<{ playlists: Playlist[] }>('/playlists')
@@ -69,7 +70,7 @@ export async function activatePlaylist(id: string): Promise<Playlist> {
   return apiFetch<Playlist>(`/playlists/${id}/activate`, { method: 'PUT' })
 }
 
-// ── Playlist item CRUD ────────────────────────────────────────────────────────
+// Playlist item CRUD
 
 export async function fetchPlaylistItems(playlistId: string): Promise<PlaylistItem[]> {
   const data = await apiFetch<{ items: PlaylistItem[] }>(`/playlists/${playlistId}/items`)

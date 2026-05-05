@@ -11,7 +11,7 @@ import {
   getPublicUrl,
 } from "../storage.js";
 
-// ─── Schemas ────────────────────────────────────────────────────────────────
+// Schemas
 
 const ArticleSchema = z.object({
   id: z.string(),
@@ -46,7 +46,7 @@ const ErrorResponseSchema = z.object({
   error: z.string(),
 });
 
-// ─── Media Schemas ───────────────────────────────────────────────────────────
+// Media Schemas
 
 const MediaFileSchema = z.object({
   id: z.string(),
@@ -63,7 +63,7 @@ const MediaListResponseSchema = z.object({
   files: z.array(MediaFileSchema),
 });
 
-// ─── Playlist Schemas ────────────────────────────────────────────────────────
+// Playlist Schemas
 
 const PlaylistItemTypeSchema = z.enum([
   "ARTICLE_LATEST",
@@ -117,7 +117,7 @@ const UpdatePlaylistItemRequestSchema = z.object({
   isFullscreen: z.boolean().optional(),
 });
 
-// ─── Routes ──────────────────────────────────────────────────────────────────
+// Routes
 
 const getArticlesRoute = createRoute({
   method: "get",
@@ -242,7 +242,7 @@ const getMediaContentRoute = createRoute({
   },
 });
 
-// ─── Playlist routes ─────────────────────────────────────────────────────────
+// Playlist routes
 
 const getPlaylistsRoute = createRoute({
   method: "get",
@@ -295,7 +295,7 @@ const activatePlaylistRoute = createRoute({
   },
 });
 
-// ─── Playlist item routes ─────────────────────────────────────────────────────
+// Playlist item routes
 
 const getPlaylistItemsRoute = createRoute({
   method: "get",
@@ -357,7 +357,7 @@ const reorderPlaylistItemsRoute = createRoute({
   },
 });
 
-// ─── Handlers ────────────────────────────────────────────────────────────────
+// Handlers
 
 export const adminApp = new OpenAPIHono();
 
@@ -419,7 +419,7 @@ adminApp.openapi(refreshRankingsRoute, async (c) => {
   }
 });
 
-// ─── Media handlers ──────────────────────────────────────────────────────────
+// Media handlers
 
 adminApp.openapi(getMediaRoute, async (c) => {
   const files = await prisma.mediaFile.findMany({
@@ -534,13 +534,14 @@ adminApp.openapi(getMediaContentRoute, async (c) => {
   }
 });
 
-// ─── Playlist handlers ───────────────────────────────────────────────────────
+// Playlist handlers
 
 function serializePlaylistItem(item: {
   id: string;
   type: string;
   order: number;
   durationSec: number | null;
+  isFullscreen: boolean;
   mediaFile: { id: string; storageKey: string; mimeType: string; originalName: string } | null;
 }) {
   return {
@@ -616,7 +617,7 @@ adminApp.openapi(activatePlaylistRoute, async (c) => {
   return c.json(serializePlaylist(pl), 200);
 });
 
-// ─── Playlist item handlers ───────────────────────────────────────────────────
+// Playlist item handlers
 
 adminApp.openapi(getPlaylistItemsRoute, async (c) => {
   const { playlistId } = c.req.valid("param");

@@ -26,7 +26,7 @@ const toast = useToast()
 
 const playlistId = computed(() => route.params.id as string)
 
-// ── ローカルコピー（ドラッグ並び替え用）────────────────────────────────
+// ローカルコピー（ドラッグ並び替え用）
 const localItems = ref([...playlistStore.items])
 const isDirty = computed(() => {
   const storeIds = playlistStore.items.map((i) => i.id).join(',')
@@ -45,7 +45,7 @@ onMounted(async () => {
   await Promise.all([playlistStore.load(playlistId.value), mediaStore.load()])
 })
 
-// ── 並び替え保存 ──────────────────────────────────────────────────────
+// 並び替え保存
 async function saveOrder() {
   try {
     await playlistStore.reorder(playlistId.value, localItems.value.map((i) => i.id))
@@ -59,7 +59,7 @@ function onReorder(event: { value: typeof localItems.value }) {
   localItems.value = event.value
 }
 
-// ── 削除 ──────────────────────────────────────────────────────────────
+// 削除
 function confirmDelete(id: string, label: string) {
   confirm.require({
     message: `「${label}」を削除しますか？`,
@@ -79,7 +79,7 @@ function confirmDelete(id: string, label: string) {
   })
 }
 
-// ── アイテム追加ダイアログ ────────────────────────────────────────────
+// アイテム追加ダイアログ
 const showDialog = ref(false)
 const newType = ref<PlaylistItemType>('ARTICLE_LATEST')
 const newDuration = ref<number>(8)
@@ -151,7 +151,6 @@ async function confirmAdd() {
   }
 }
 
-// ── 表示ユーティリティ ────────────────────────────────────────────────
 async function onToggleFullscreen(item: (typeof localItems.value)[0], value: boolean) {
   try {
     await playlistStore.update(playlistId.value, item.id, { isFullscreen: value })
@@ -160,6 +159,7 @@ async function onToggleFullscreen(item: (typeof localItems.value)[0], value: boo
   }
 }
 
+// 表示ユーティリティ
 const typeLabel: Record<PlaylistItemType, string> = {
   ARTICLE_LATEST: '最新記事',
   ARTICLE_RANDOM: 'ランダム記事',

@@ -2,7 +2,7 @@ import { createRoute, OpenAPIHono, z } from "@hono/zod-openapi";
 import { prisma } from "../db.js";
 import { createStorageClient, getObject } from "../storage.js";
 
-// ─── Schemas ────────────────────────────────────────────────────────────────
+// Schemas
 
 const ArticleSchema = z.object({
   id: z.string(),
@@ -29,7 +29,7 @@ const RankingsResponseSchema = z.object({
   fetchedAt: z.string().nullable(),
 });
 
-// ─── Playlist Schemas ────────────────────────────────────────────────────────
+// Playlist Schemas
 
 const MediaPayloadSchema = z.object({
   storageKey: z.string(),
@@ -79,7 +79,7 @@ const PlaylistResponseSchema = z.object({
   items: z.array(PlaylistItemSchema),
 });
 
-// ─── Routes ──────────────────────────────────────────────────────────────────
+// Routes
 
 const getArticlesRoute = createRoute({
   method: "get",
@@ -114,7 +114,7 @@ const getPlaylistRoute = createRoute({
   },
 });
 
-// ─── Handlers ────────────────────────────────────────────────────────────────
+// Handlers
 
 export const signageApp = new OpenAPIHono();
 
@@ -209,7 +209,7 @@ signageApp.openapi(getPlaylistRoute, async (c) => {
   return c.json({ items });
 });
 
-// ─── Media proxy ──────────────────────────────────────────────────────────────
+// Media proxy
 
 const getMediaProxyRoute = createRoute({
   method: "get",

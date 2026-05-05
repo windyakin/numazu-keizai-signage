@@ -12,11 +12,11 @@ import RankingSlide from "../slides/RankingSlide.vue";
 import ImageSlide from "../slides/ImageSlide.vue";
 import VideoSlide from "../slides/VideoSlide.vue";
 
-// ── State ──────────────────────────────────────────────────────────────────
 const emit = defineEmits<{
   (e: "fullscreenChange", value: boolean): void;
 }>();
 
+// State
 const playlistItems = ref<PlaylistItem[]>([]);
 const articles = ref<Article[]>([]);
 const rankingsData = ref<RankingsData>({ rankings: [], fetchedAt: null });
@@ -38,7 +38,7 @@ const refreshIntervalMin = parseInt(
 );
 const EMPTY_RETRY_SEC = 30;
 
-// ── Current item ───────────────────────────────────────────────────────────
+// Current item
 const currentItem = computed(() => playlistItems.value[currentIndex.value] ?? null);
 
 function isReady(item: PlaylistItem): boolean {
@@ -62,7 +62,7 @@ function pickRandom(): Article | null {
   return articles.value[Math.floor(Math.random() * articles.value.length)];
 }
 
-// ── Slide navigation ───────────────────────────────────────────────────────
+// Slide navigation
 function scheduleNext(seconds: number): void {
   if (slideTimer) clearTimeout(slideTimer);
   slideTimer = setTimeout(advance, seconds * 1000);
@@ -113,7 +113,7 @@ function onVideoEnded(): void {
   advance();
 }
 
-// ── Resolved payload accessors ─────────────────────────────────────────────
+// Resolved payload accessors
 const currentArticle = computed<Article | null>(() => {
   const item = currentItem.value;
   if (!item) return null;
@@ -134,7 +134,7 @@ const currentMedia = computed<MediaPayload | null>(() => {
   return item.payload as MediaPayload;
 });
 
-// ── Playlist fetch ─────────────────────────────────────────────────────────
+// Playlist fetch
 async function loadInitial(): Promise<void> {
   const [data, fetchedArticles, fetchedRankings] = await Promise.all([fetchPlaylist(), fetchArticles(), fetchRankings()]);
   playlistItems.value = data.items;
@@ -184,7 +184,7 @@ async function retryWhenEmpty(): Promise<void> {
   }
 }
 
-// ── Debug hash ─────────────────────────────────────────────────────────────
+// Debug hash
 function applyDebugHash(): boolean {
   const hash = window.location.hash.replace("#", "");
   if (!hash) return false;
@@ -202,7 +202,7 @@ function applyDebugHash(): boolean {
   return false;
 }
 
-// ── Lifecycle ──────────────────────────────────────────────────────────────
+// Lifecycle
 onMounted(async () => {
   try {
     await loadInitial();

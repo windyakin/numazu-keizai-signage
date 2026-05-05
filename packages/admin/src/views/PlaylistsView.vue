@@ -18,7 +18,7 @@ const toast = useToast()
 
 onMounted(() => store.load())
 
-// ── 新規作成 ──────────────────────────────────────────────────────────────────
+// 新規作成
 const showCreateDialog = ref(false)
 const newName = ref('')
 
@@ -38,7 +38,7 @@ async function confirmCreate() {
   }
 }
 
-// ── アクティブ化 ───────────────────────────────────────────────────────────────
+// アクティブ化
 async function activate(id: string, name: string) {
   try {
     await store.activate(id)
@@ -48,7 +48,7 @@ async function activate(id: string, name: string) {
   }
 }
 
-// ── 削除 ──────────────────────────────────────────────────────────────────────
+// 削除
 function confirmDelete(id: string, name: string) {
   confirm.require({
     message: `「${name}」を削除しますか？`,
