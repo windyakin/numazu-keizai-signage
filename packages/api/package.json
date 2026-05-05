@@ -6,7 +6,9 @@
     "dev": "tsx watch src/index.ts",
     "start": "tsx src/index.ts",
     "prisma:generate": "prisma generate",
-    "prisma:migrate": "prisma migrate deploy"
+    "prisma:migrate": "prisma migrate deploy",
+    "prisma:migrate:dev": "prisma migrate dev",
+    "prisma:drop": "prisma migrate reset --force"
   },
   "dependencies": {
     "hono": "^4.7.0",
