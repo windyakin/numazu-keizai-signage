@@ -27,15 +27,5 @@ defineProps<{
   height: 100%;
   object-fit: contain;
   display: block;
-  animation: zoom-out 10s ease-out both;
-}
-
-@keyframes zoom-out {
-  from {
-    transform: scale(1.05);
-  }
-  to {
-    transform: scale(1);
-  }
 }
 </style>
