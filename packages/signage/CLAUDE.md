@@ -50,6 +50,9 @@ packages/signage/
 - 記事を `VITE_SLIDE_DURATION_SEC`（デフォルト8秒）ごとに切り替える。
 - 記事が一巡したら `AccessRankingSlide` を `VITE_RANKING_DURATION_SEC`（デフォルト16秒）表示し、記事の先頭に戻る。
 - タイマーは `setTimeout` を 1 本だけ保持し、`scheduleNext(seconds)` で使い回す。`setInterval` は使わない（スライド種別ごとに尺が違うため）。
+- プレイリストの再取得はループが先頭に戻った瞬間（wrap-around 検知）に `fetchNextPlaylist()` を発火し、結果は `pendingPlaylist` に保留して**次のループ完了時**に `playlistItems` へ反映する。再生中のループ構成は変えない。
+- `playlistItems` が空のときだけ別途 30秒間隔の `retryWhenEmpty()` が走り、edge から取得を試みる。items がある状態の fetch 失敗は silent ignore で既存プレイリストを維持する。
+- 記事・ランキングは playlist と独立した `setInterval`（`VITE_PLAYLIST_REFRESH_INTERVAL_MIN`、既定10分）で `refreshArticlesAndRankings()` が走る。
 - `<Transition name="slide" mode="out-in">` で CSS フェード。遷移時間は `--transition-duration`。
 - API 取得失敗時はエラーメッセージを全面表示しループは始めない。
 - デバッグ用途で URL ハッシュによる固定表示をサポート:

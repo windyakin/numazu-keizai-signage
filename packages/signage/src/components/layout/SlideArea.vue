@@ -24,11 +24,15 @@ const debugFixed = ref(false);
 
 let slideTimer: ReturnType<typeof setTimeout> | null = null;
 let refreshTimer: ReturnType<typeof setInterval> | null = null;
+let emptyRetryTimer: ReturnType<typeof setInterval> | null = null;
+let pendingPlaylist: PlaylistItem[] | null = null;
+let fetchingPlaylist = false;
 
 const refreshIntervalMin = parseInt(
-  import.meta.env.VITE_PLAYLIST_REFRESH_INTERVAL_MIN || "30",
+  import.meta.env.VITE_PLAYLIST_REFRESH_INTERVAL_MIN || "10",
   10
 );
+const EMPTY_RETRY_SEC = 30;
 
 // ── Current item ───────────────────────────────────────────────────────────
 const currentItem = computed(() => playlistItems.value[currentIndex.value] ?? null);
@@ -62,8 +66,27 @@ function scheduleNext(seconds: number): void {
 
 function advance(): void {
   if (debugFixed.value) return;
+  const len = playlistItems.value.length;
+  if (len === 0) return;
+
   const next = findNextValidIndex(currentIndex.value + 1);
   if (next === null) return;
+
+  const wrapped = next <= currentIndex.value;
+  if (wrapped) {
+    if (pendingPlaylist !== null && pendingPlaylist.length > 0) {
+      playlistItems.value = pendingPlaylist;
+      pendingPlaylist = null;
+      const first = findNextValidIndex(0);
+      if (first === null) return;
+      goTo(first);
+    } else {
+      goTo(next);
+    }
+    void fetchNextPlaylist();
+    return;
+  }
+
   goTo(next);
 }
 
@@ -104,7 +127,7 @@ const currentMedia = computed<MediaPayload | null>(() => {
 });
 
 // ── Playlist fetch ─────────────────────────────────────────────────────────
-async function loadPlaylist(): Promise<void> {
+async function loadInitial(): Promise<void> {
   const [data, fetchedArticles, fetchedRankings] = await Promise.all([fetchPlaylist(), fetchArticles(), fetchRankings()]);
   playlistItems.value = data.items;
   articles.value = fetchedArticles;
@@ -114,11 +137,42 @@ async function loadPlaylist(): Promise<void> {
   }
 }
 
-async function refreshPlaylist(): Promise<void> {
+async function fetchNextPlaylist(): Promise<void> {
+  if (fetchingPlaylist) return;
+  fetchingPlaylist = true;
   try {
-    await loadPlaylist();
+    const data = await fetchPlaylist();
+    if (data.items.length > 0) {
+      pendingPlaylist = data.items;
+    }
+  } catch {
+    // silently ignore - keep current playlist
+  } finally {
+    fetchingPlaylist = false;
+  }
+}
+
+async function refreshArticlesAndRankings(): Promise<void> {
+  try {
+    const [fetchedArticles, fetchedRankings] = await Promise.all([fetchArticles(), fetchRankings()]);
+    articles.value = fetchedArticles;
+    rankingsData.value = fetchedRankings;
   } catch {
     // silently ignore background refresh errors
+  }
+}
+
+async function retryWhenEmpty(): Promise<void> {
+  if (playlistItems.value.length > 0) return;
+  try {
+    await loadInitial();
+    if (playlistItems.value.length > 0) {
+      error.value = null;
+      const first = findNextValidIndex(0);
+      if (first !== null) goTo(first);
+    }
+  } catch {
+    // silently ignore - retry on next tick
   }
 }
 
@@ -143,7 +197,7 @@ function applyDebugHash(): boolean {
 // ── Lifecycle ──────────────────────────────────────────────────────────────
 onMounted(async () => {
   try {
-    await loadPlaylist();
+    await loadInitial();
 
     if (applyDebugHash()) {
       const item = playlistItems.value[currentIndex.value];
@@ -158,12 +212,14 @@ onMounted(async () => {
     loading.value = false;
   }
 
-  refreshTimer = setInterval(refreshPlaylist, refreshIntervalMin * 60 * 1000);
+  refreshTimer = setInterval(refreshArticlesAndRankings, refreshIntervalMin * 60 * 1000);
+  emptyRetryTimer = setInterval(retryWhenEmpty, EMPTY_RETRY_SEC * 1000);
 });
 
 onUnmounted(() => {
   if (slideTimer) clearTimeout(slideTimer);
   if (refreshTimer) clearInterval(refreshTimer);
+  if (emptyRetryTimer) clearInterval(emptyRetryTimer);
 });
 </script>
 
