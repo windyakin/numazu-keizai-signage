@@ -78,6 +78,7 @@ const PlaylistItemSchema = z.object({
   type: PlaylistItemTypeSchema,
   order: z.number(),
   durationSec: z.number().nullable(),
+  isFullscreen: z.boolean(),
   mediaFile: z
     .object({
       id: z.string(),
@@ -107,12 +108,13 @@ const CreatePlaylistItemRequestSchema = z.discriminatedUnion("type", [
   z.object({ type: z.literal("ARTICLE_LATEST"), durationSec: z.number().int().positive() }),
   z.object({ type: z.literal("ARTICLE_RANDOM"), durationSec: z.number().int().positive() }),
   z.object({ type: z.literal("RANKING"),        durationSec: z.number().int().positive() }),
-  z.object({ type: z.literal("IMAGE"),          durationSec: z.number().int().positive(), mediaFileId: z.string() }),
-  z.object({ type: z.literal("VIDEO"),          durationSec: z.number().int().positive().nullable().optional(), mediaFileId: z.string() }),
+  z.object({ type: z.literal("IMAGE"),          durationSec: z.number().int().positive(), mediaFileId: z.string(), isFullscreen: z.boolean().optional() }),
+  z.object({ type: z.literal("VIDEO"),          durationSec: z.number().int().positive().nullable().optional(), mediaFileId: z.string(), isFullscreen: z.boolean().optional() }),
 ]);
 
 const UpdatePlaylistItemRequestSchema = z.object({
-  durationSec: z.number().int().positive().nullable(),
+  durationSec: z.number().int().positive().nullable().optional(),
+  isFullscreen: z.boolean().optional(),
 });
 
 // ─── Routes ──────────────────────────────────────────────────────────────────
@@ -546,6 +548,7 @@ function serializePlaylistItem(item: {
     type: item.type as z.infer<typeof PlaylistItemTypeSchema>,
     order: item.order,
     durationSec: item.durationSec,
+    isFullscreen: item.isFullscreen,
     mediaFile: item.mediaFile
       ? { id: item.mediaFile.id, url: getPublicUrl(item.mediaFile.storageKey), mimeType: item.mediaFile.mimeType, originalName: item.mediaFile.originalName }
       : null,
@@ -645,6 +648,7 @@ adminApp.openapi(createPlaylistItemRoute, async (c) => {
       order: nextOrder,
       durationSec: body.durationSec ?? null,
       mediaFileId: "mediaFileId" in body ? (body.mediaFileId as string) : null,
+      isFullscreen: "isFullscreen" in body ? body.isFullscreen ?? false : false,
     },
     include: { mediaFile: true },
   });
@@ -653,12 +657,15 @@ adminApp.openapi(createPlaylistItemRoute, async (c) => {
 
 adminApp.openapi(updatePlaylistItemRoute, async (c) => {
   const { playlistId, itemId } = c.req.valid("param");
-  const { durationSec } = c.req.valid("json");
+  const { durationSec, isFullscreen } = c.req.valid("json");
   const existing = await prisma.playlistItem.findUnique({ where: { id: itemId, playlistId } });
   if (!existing) return c.json({ error: "Not found" }, 404) as never;
+  const data: { durationSec?: number | null; isFullscreen?: boolean } = {};
+  if (durationSec !== undefined) data.durationSec = durationSec;
+  if (isFullscreen !== undefined) data.isFullscreen = isFullscreen;
   const item = await prisma.playlistItem.update({
     where: { id: itemId },
-    data: { durationSec },
+    data,
     include: { mediaFile: true },
   });
   return c.json(serializePlaylistItem(item), 200);

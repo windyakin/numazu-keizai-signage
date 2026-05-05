@@ -79,6 +79,7 @@ func (p *PlaylistSyncer) once(ctx context.Context) error {
 			if err := json.Unmarshal(raw.Payload, &payload); err == nil && payload.StorageKey != "" {
 				item.StorageKey = &payload.StorageKey
 				item.MimeType = &payload.MimeType
+				item.IsFullscreen = payload.IsFullscreen
 			}
 		}
 

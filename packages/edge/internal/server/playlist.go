@@ -17,8 +17,9 @@ type playlistItemDTO struct {
 }
 
 type mediaPayloadDTO struct {
-	URL      string `json:"url"`
-	MimeType string `json:"mimeType"`
+	URL          string `json:"url"`
+	MimeType     string `json:"mimeType"`
+	IsFullscreen bool   `json:"isFullscreen"`
 }
 
 type playlistResponseDTO struct {
@@ -60,8 +61,9 @@ func (s *Server) handleGetPlaylist(w http.ResponseWriter, r *http.Request) {
 						mimeType = *item.MimeType
 					}
 					dto.Payload = mediaPayloadDTO{
-						URL:      buildMediaURL(r, s.cfg.MediaDir, localPath),
-						MimeType: mimeType,
+						URL:          buildMediaURL(r, s.cfg.MediaDir, localPath),
+						MimeType:     mimeType,
+						IsFullscreen: item.IsFullscreen,
 					}
 				}
 			}

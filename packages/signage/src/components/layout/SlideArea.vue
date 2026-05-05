@@ -13,6 +13,10 @@ import ImageSlide from "../slides/ImageSlide.vue";
 import VideoSlide from "../slides/VideoSlide.vue";
 
 // ── State ──────────────────────────────────────────────────────────────────
+const emit = defineEmits<{
+  (e: "fullscreenChange", value: boolean): void;
+}>();
+
 const playlistItems = ref<PlaylistItem[]>([]);
 const articles = ref<Article[]>([]);
 const rankingsData = ref<RankingsData>({ rankings: [], fetchedAt: null });
@@ -96,6 +100,10 @@ function goTo(index: number): void {
   if (item.type === "ARTICLE_RANDOM") {
     randomArticle.value = pickRandom();
   }
+  const fullscreen =
+    (item.type === "IMAGE" || item.type === "VIDEO") &&
+    item.payload?.isFullscreen === true;
+  emit("fullscreenChange", fullscreen);
   if (item.type !== "VIDEO") {
     scheduleNext(item.durationSec ?? 8);
   }

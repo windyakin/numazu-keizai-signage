@@ -15,12 +15,13 @@ const (
 
 // PlaylistItem is the locally-stored representation of a playlist entry.
 type PlaylistItem struct {
-	ID          string
-	Type        PlaylistItemType
-	Order       int
-	DurationSec *int
-	StorageKey  *string // non-nil for IMAGE / VIDEO
-	MimeType    *string // non-nil for IMAGE / VIDEO
+	ID           string
+	Type         PlaylistItemType
+	Order        int
+	DurationSec  *int
+	StorageKey   *string // non-nil for IMAGE / VIDEO
+	MimeType     *string // non-nil for IMAGE / VIDEO
+	IsFullscreen bool    // meaningful for IMAGE / VIDEO
 }
 
 // UpstreamPlaylistResponse is the JSON structure returned by the upstream API.
@@ -39,6 +40,7 @@ type UpstreamPlaylistItem struct {
 
 // UpstreamMediaPayload is the payload for IMAGE / VIDEO items.
 type UpstreamMediaPayload struct {
-	StorageKey string `json:"storageKey"`
-	MimeType   string `json:"mimeType"`
+	StorageKey   string `json:"storageKey"`
+	MimeType     string `json:"mimeType"`
+	IsFullscreen bool   `json:"isFullscreen"`
 }

@@ -46,6 +46,9 @@ const colonVisible = computed(() => {
   background: var(--color-primary);
   border-bottom: 2px solid var(--color-primary-dark);
   flex-shrink: 0;
+  transition: height var(--transition-duration) ease,
+    opacity var(--transition-duration) ease,
+    border-bottom-width var(--transition-duration) ease;
 }
 
 .topbar__logo {

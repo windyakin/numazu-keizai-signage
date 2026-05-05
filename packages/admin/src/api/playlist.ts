@@ -14,6 +14,7 @@ export interface PlaylistItem {
   type: PlaylistItemType
   order: number
   durationSec: number | null
+  isFullscreen: boolean
   mediaFile: PlaylistMediaFile | null
 }
 
@@ -30,10 +31,14 @@ export type CreatePlaylistItemBody =
   | { type: 'ARTICLE_LATEST'; durationSec: number }
   | { type: 'ARTICLE_RANDOM'; durationSec: number }
   | { type: 'RANKING'; durationSec: number }
-  | { type: 'IMAGE'; durationSec: number; mediaFileId: string }
-  | { type: 'VIDEO'; durationSec?: null; mediaFileId: string }
+  | { type: 'IMAGE'; durationSec: number; mediaFileId: string; isFullscreen?: boolean }
+  | { type: 'VIDEO'; durationSec?: null; mediaFileId: string; isFullscreen?: boolean }
 
 // ── Playlist CRUD ─────────────────────────────────────────────────────────────
+export interface UpdatePlaylistItemBody {
+  durationSec?: number | null
+  isFullscreen?: boolean
+}
 
 export async function fetchPlaylists(): Promise<Playlist[]> {
   const data = await apiFetch<{ playlists: Playlist[] }>('/playlists')
@@ -85,12 +90,12 @@ export async function addPlaylistItem(
 export async function updatePlaylistItem(
   playlistId: string,
   itemId: string,
-  durationSec: number | null,
+  patch: UpdatePlaylistItemBody,
 ): Promise<PlaylistItem> {
   return apiFetch<PlaylistItem>(`/playlists/${playlistId}/items/${itemId}`, {
     method: 'PATCH',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ durationSec }),
+    body: JSON.stringify(patch),
   })
 }
 

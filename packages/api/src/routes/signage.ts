@@ -34,6 +34,7 @@ const RankingsResponseSchema = z.object({
 const MediaPayloadSchema = z.object({
   storageKey: z.string(),
   mimeType: z.string(),
+  isFullscreen: z.boolean(),
 });
 
 const PlaylistItemSchema = z.discriminatedUnion("type", [
@@ -191,7 +192,7 @@ signageApp.openapi(getPlaylistRoute, async (c) => {
           ...base,
           type: "IMAGE" as const,
           payload: item.mediaFile
-            ? { storageKey: item.mediaFile.storageKey, mimeType: item.mediaFile.mimeType }
+            ? { storageKey: item.mediaFile.storageKey, mimeType: item.mediaFile.mimeType, isFullscreen: item.isFullscreen }
             : null,
         };
       case "VIDEO":
@@ -199,7 +200,7 @@ signageApp.openapi(getPlaylistRoute, async (c) => {
           ...base,
           type: "VIDEO" as const,
           payload: item.mediaFile
-            ? { storageKey: item.mediaFile.storageKey, mimeType: item.mediaFile.mimeType }
+            ? { storageKey: item.mediaFile.storageKey, mimeType: item.mediaFile.mimeType, isFullscreen: item.isFullscreen }
             : null,
         };
     }

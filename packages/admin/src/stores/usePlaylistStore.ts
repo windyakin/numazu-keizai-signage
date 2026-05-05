@@ -8,6 +8,7 @@ import {
   reorderPlaylist,
   type PlaylistItem,
   type CreatePlaylistItemBody,
+  type UpdatePlaylistItemBody,
 } from '../api/playlist'
 
 export const usePlaylistStore = defineStore('playlist', () => {
@@ -32,8 +33,8 @@ export const usePlaylistStore = defineStore('playlist', () => {
     items.value = [...items.value, item]
   }
 
-  async function update(playlistId: string, itemId: string, durationSec: number | null) {
-    const item = await updatePlaylistItem(playlistId, itemId, durationSec)
+  async function update(playlistId: string, itemId: string, patch: UpdatePlaylistItemBody) {
+    const item = await updatePlaylistItem(playlistId, itemId, patch)
     const idx = items.value.findIndex((i) => i.id === itemId)
     if (idx !== -1) {
       const next = [...items.value]

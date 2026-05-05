@@ -4,12 +4,14 @@ import { useRoute, useRouter } from 'vue-router'
 import { useConfirm } from 'primevue/useconfirm'
 import { useToast } from 'primevue/usetoast'
 import Button from 'primevue/button'
+import Checkbox from 'primevue/checkbox'
 import Column from 'primevue/column'
 import DataTable from 'primevue/datatable'
 import Dialog from 'primevue/dialog'
 import InputNumber from 'primevue/inputnumber'
 import Select from 'primevue/select'
 import Tag from 'primevue/tag'
+import ToggleSwitch from 'primevue/toggleswitch'
 import { usePlaylistStore } from '../stores/usePlaylistStore'
 import { useMediaStore } from '../stores/useMediaStore'
 import type { PlaylistItemType, CreatePlaylistItemBody } from '../api/playlist'
@@ -82,6 +84,7 @@ const showDialog = ref(false)
 const newType = ref<PlaylistItemType>('ARTICLE_LATEST')
 const newDuration = ref<number>(8)
 const newMediaFileId = ref<string | null>(null)
+const newIsFullscreen = ref(false)
 
 const typeOptions: { label: string; value: PlaylistItemType }[] = [
   { label: '最新記事', value: 'ARTICLE_LATEST' },
@@ -105,6 +108,7 @@ function openDialog() {
   newType.value = 'ARTICLE_LATEST'
   newDuration.value = 8
   newMediaFileId.value = null
+  newIsFullscreen.value = false
   showDialog.value = true
 }
 
@@ -122,9 +126,18 @@ async function confirmAdd() {
 
   let body: CreatePlaylistItemBody
   if (newType.value === 'IMAGE') {
-    body = { type: 'IMAGE', durationSec: newDuration.value, mediaFileId: newMediaFileId.value! }
+    body = {
+      type: 'IMAGE',
+      durationSec: newDuration.value,
+      mediaFileId: newMediaFileId.value!,
+      isFullscreen: newIsFullscreen.value,
+    }
   } else if (newType.value === 'VIDEO') {
-    body = { type: 'VIDEO', mediaFileId: newMediaFileId.value! }
+    body = {
+      type: 'VIDEO',
+      mediaFileId: newMediaFileId.value!,
+      isFullscreen: newIsFullscreen.value,
+    }
   } else {
     body = { type: newType.value, durationSec: newDuration.value }
   }
@@ -139,6 +152,14 @@ async function confirmAdd() {
 }
 
 // ── 表示ユーティリティ ────────────────────────────────────────────────
+async function onToggleFullscreen(item: (typeof localItems.value)[0], value: boolean) {
+  try {
+    await playlistStore.update(playlistId.value, item.id, { isFullscreen: value })
+  } catch (e) {
+    toast.add({ severity: 'error', summary: '更新失敗', detail: String(e), life: 5000 })
+  }
+}
+
 const typeLabel: Record<PlaylistItemType, string> = {
   ARTICLE_LATEST: '最新記事',
   ARTICLE_RANDOM: 'ランダム記事',
@@ -224,6 +245,17 @@ function durationLabel(item: (typeof localItems.value)[0]): string {
         <template #body="{ data }">{{ durationLabel(data) }}</template>
       </Column>
 
+      <Column header="フルスクリーン" style="width: 8rem">
+        <template #body="{ data }">
+          <ToggleSwitch
+            v-if="data.type === 'IMAGE' || data.type === 'VIDEO'"
+            :model-value="data.isFullscreen"
+            @update:model-value="onToggleFullscreen(data, $event)"
+          />
+          <span v-else class="text-muted">—</span>
+        </template>
+      </Column>
+
       <Column style="width: 4rem">
         <template #body="{ data }">
           <Button
@@ -280,6 +312,11 @@ function durationLabel(item: (typeof localItems.value)[0]): string {
             先に「メディア管理」でファイルをアップロードしてください
           </small>
         </div>
+
+        <div v-if="needsMedia" class="field field-inline">
+          <Checkbox v-model="newIsFullscreen" inputId="newIsFullscreen" binary />
+          <label for="newIsFullscreen" class="inline-label">フルスクリーン表示（ヘッダーを隠す）</label>
+        </div>
       </div>
 
       <template #footer>
@@ -333,9 +370,24 @@ function durationLabel(item: (typeof localItems.value)[0]): string {
   gap: 0.4rem;
 }
 
+.field-inline {
+  flex-direction: row;
+  align-items: center;
+  gap: 0.6rem;
+}
+
 .field label {
   font-weight: 600;
   font-size: 0.875rem;
+}
+
+.inline-label {
+  font-weight: 400;
+  cursor: pointer;
+}
+
+.text-muted {
+  color: #6c757d;
 }
 
 .natural-end {

@@ -29,8 +29,8 @@ func (p *PlaylistItems) Replace(ctx context.Context, items []model.PlaylistItem,
 	}
 
 	stmt, err := tx.PrepareContext(ctx, `
-		INSERT INTO playlist_items (id, type, item_order, duration_sec, storage_key, mime_type, fetched_at)
-		VALUES (?, ?, ?, ?, ?, ?, ?)
+		INSERT INTO playlist_items (id, type, item_order, duration_sec, storage_key, mime_type, is_fullscreen, fetched_at)
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?)
 	`)
 	if err != nil {
 		return err
@@ -40,7 +40,7 @@ func (p *PlaylistItems) Replace(ctx context.Context, items []model.PlaylistItem,
 	for _, item := range items {
 		if _, err := stmt.ExecContext(ctx,
 			item.ID, string(item.Type), item.Order, item.DurationSec,
-			item.StorageKey, item.MimeType, fetchedAt,
+			item.StorageKey, item.MimeType, item.IsFullscreen, fetchedAt,
 		); err != nil {
 			return err
 		}
@@ -52,7 +52,7 @@ func (p *PlaylistItems) Replace(ctx context.Context, items []model.PlaylistItem,
 // List returns all playlist items ordered by item_order ascending.
 func (p *PlaylistItems) List(ctx context.Context) ([]model.PlaylistItem, error) {
 	rows, err := p.db.QueryContext(ctx, `
-		SELECT id, type, item_order, duration_sec, storage_key, mime_type
+		SELECT id, type, item_order, duration_sec, storage_key, mime_type, is_fullscreen
 		FROM playlist_items
 		ORDER BY item_order ASC
 	`)
@@ -67,7 +67,7 @@ func (p *PlaylistItems) List(ctx context.Context) ([]model.PlaylistItem, error) 
 		var itemType string
 		if err := rows.Scan(
 			&item.ID, &itemType, &item.Order, &item.DurationSec,
-			&item.StorageKey, &item.MimeType,
+			&item.StorageKey, &item.MimeType, &item.IsFullscreen,
 		); err != nil {
 			return nil, err
 		}

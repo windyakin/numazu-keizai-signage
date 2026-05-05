@@ -9,6 +9,7 @@ export interface MediaPayload {
   mediaFileId: string;
   url: string;
   mimeType: string;
+  isFullscreen: boolean;
 }
 
 export type PlaylistItem =

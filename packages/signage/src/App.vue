@@ -1,10 +1,12 @@
 <script setup lang="ts">
-import { onMounted, onUnmounted } from "vue";
+import { onMounted, onUnmounted, ref } from "vue";
 import TopBar from "./components/layout/TopBar.vue";
 import SlideArea from "./components/layout/SlideArea.vue";
 
 const IDLE_MS = 5000;
 let hideCursorTimer: ReturnType<typeof setTimeout> | null = null;
+
+const isFullscreenSlide = ref(false);
 
 function onMouseMove() {
   document.documentElement.classList.remove("cursor-hidden");
@@ -26,6 +28,15 @@ onUnmounted(() => {
 </script>
 
 <template>
-  <TopBar />
-  <SlideArea />
+  <TopBar :class="{ 'topbar--collapsed': isFullscreenSlide }" />
+  <SlideArea @fullscreen-change="isFullscreenSlide = $event" />
 </template>
+
+<style>
+.topbar--collapsed {
+  height: 0 !important;
+  opacity: 0;
+  border-bottom-width: 0 !important;
+  overflow: hidden;
+}
+</style>

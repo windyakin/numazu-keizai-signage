@@ -2,6 +2,7 @@ package store
 
 import (
 	"database/sql"
+	"strings"
 
 	_ "modernc.org/sqlite"
 )
@@ -32,6 +33,7 @@ CREATE TABLE IF NOT EXISTS playlist_items (
   duration_sec INTEGER,
   storage_key TEXT,
   mime_type TEXT,
+  is_fullscreen INTEGER NOT NULL DEFAULT 0,
   fetched_at DATETIME NOT NULL
 );
 
@@ -57,5 +59,26 @@ func Open(dbPath string) (*sql.DB, error) {
 		db.Close()
 		return nil, err
 	}
+	if err := migrate(db); err != nil {
+		db.Close()
+		return nil, err
+	}
 	return db, nil
+}
+
+// migrate applies idempotent schema patches for pre-existing databases.
+// Each statement may report "duplicate column" if already applied; that is ignored.
+func migrate(db *sql.DB) error {
+	stmts := []string{
+		`ALTER TABLE playlist_items ADD COLUMN is_fullscreen INTEGER NOT NULL DEFAULT 0`,
+	}
+	for _, stmt := range stmts {
+		if _, err := db.Exec(stmt); err != nil {
+			if strings.Contains(err.Error(), "duplicate column") {
+				continue
+			}
+			return err
+		}
+	}
+	return nil
 }
