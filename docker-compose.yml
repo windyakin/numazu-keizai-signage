@@ -12,6 +12,8 @@ services:
       interval: 5s
       timeout: 5s
       retries: 5
+    ports:
+      - "5432:5432"
 
   api:
     build: ./packages/api
@@ -20,6 +22,7 @@ services:
       FEED_URL: ${FEED_URL}
       FEED_IMAGE_BASE_URL: ${FEED_IMAGE_BASE_URL}
       FEED_FETCH_INTERVAL_MIN: ${FEED_FETCH_INTERVAL_MIN:-30}
+      ACCESS_URL: ${ACCESS_URL}
       PORT: "3000"
     depends_on:
       postgres:
@@ -31,6 +34,7 @@ services:
       args:
         VITE_API_BASE_URL: /api
         VITE_SLIDE_DURATION_SEC: ${VITE_SLIDE_DURATION_SEC:-8}
+        VITE_RANKING_DURATION_SEC: ${VITE_RANKING_DURATION_SEC:-16}
     depends_on:
       - api
 
