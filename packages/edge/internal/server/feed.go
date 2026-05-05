@@ -8,10 +8,11 @@ import (
 )
 
 type articleDTO struct {
-	ID       string `json:"id"`
-	Title    string `json:"title"`
-	ImageURL string `json:"imageUrl"`
-	Start    string `json:"start"`
+	ID          string  `json:"id"`
+	Title       string  `json:"title"`
+	ImageURL    string  `json:"imageUrl"`
+	Description *string `json:"description"`
+	Start       string  `json:"start"`
 }
 
 type articlesResponse struct {
@@ -29,10 +30,11 @@ func (s *Server) handleGetArticles(w http.ResponseWriter, r *http.Request) {
 	res := articlesResponse{Articles: make([]articleDTO, 0, len(articles))}
 	for _, a := range articles {
 		res.Articles = append(res.Articles, articleDTO{
-			ID:       a.ID,
-			Title:    a.Title,
-			ImageURL: joinMediaURL(s.cfg.MediaURLPrefix, a.ImageURL),
-			Start:    a.Start.UTC().Format("2006-01-02T15:04:05.000Z"),
+			ID:          a.ID,
+			Title:       a.Title,
+			ImageURL:    joinMediaURL(s.cfg.MediaURLPrefix, a.ImageURL),
+			Description: a.Description,
+			Start:       a.Start.UTC().Format("2006-01-02T15:04:05.000Z"),
 		})
 	}
 

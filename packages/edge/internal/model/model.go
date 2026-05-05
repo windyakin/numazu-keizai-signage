@@ -3,10 +3,11 @@ package model
 import "time"
 
 type Article struct {
-	ID       string    `json:"id"`
-	Title    string    `json:"title"`
-	ImageURL string    `json:"imageUrl"`
-	Start    time.Time `json:"start"`
+	ID          string    `json:"id"`
+	Title       string    `json:"title"`
+	ImageURL    string    `json:"imageUrl"`
+	Description *string   `json:"description"`
+	Start       time.Time `json:"start"`
 }
 
 type ArticlesResponse struct {

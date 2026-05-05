@@ -11,6 +11,7 @@ CREATE TABLE IF NOT EXISTS articles (
   id TEXT PRIMARY KEY,
   title TEXT NOT NULL,
   image_url TEXT NOT NULL,
+  description TEXT,
   start DATETIME NOT NULL,
   fetched_at DATETIME NOT NULL
 );

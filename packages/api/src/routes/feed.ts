@@ -6,6 +6,7 @@ const ArticleSchema = z.object({
   id: z.string(),
   title: z.string(),
   imageUrl: z.string(),
+  description: z.string().nullable(),
   start: z.string(),
 });
 
@@ -59,6 +60,7 @@ feedApp.openapi(getArticlesRoute, async (c) => {
       id: a.id,
       title: a.title,
       imageUrl: a.imageUrl,
+      description: a.description,
       start: a.start.toISOString(),
     })),
   });

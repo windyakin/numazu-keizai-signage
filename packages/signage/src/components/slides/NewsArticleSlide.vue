@@ -34,6 +34,9 @@ const formattedDate = computed(() => {
           {{ formattedDate }}
         </time>
         <h2 class="news-slide__title">{{ article.title }}</h2>
+        <p v-if="article.description" class="news-slide__description">
+          {{ article.description }}
+        </p>
       </div>
     </div>
   </div>
@@ -94,6 +97,13 @@ const formattedDate = computed(() => {
   font-weight: 700;
   line-height: 1.5;
   color: var(--color-text);
+}
+
+.news-slide__description {
+  margin-top: 24px;
+  font-size: 1.4rem;
+  line-height: 1.7;
+  color: var(--color-text-muted);
 }
 
 /* Landscape: swap left/right */

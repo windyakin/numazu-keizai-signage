@@ -1,4 +1,17 @@
+import { parse } from "node-html-parser";
 import { prisma } from "../db.js";
+
+async function fetchArticleDescription(feedUrl: string, id: string): Promise<string | null> {
+  const articleUrl = `${feedUrl.replace(/\/+$/, "")}/${id}/`;
+  try {
+    const res = await fetch(articleUrl);
+    if (!res.ok) return null;
+    const root = parse(await res.text());
+    return root.querySelector('meta[name="description"]')?.getAttribute("content") ?? null;
+  } catch {
+    return null;
+  }
+}
 
 interface FeedItem {
   id: string;
@@ -67,6 +80,15 @@ export async function fetchFeed(): Promise<number> {
         fetchedAt: new Date(),
       },
     });
+  }
+
+  // description が未取得の記事を逐次フェッチ
+  const noDesc = await prisma.article.findMany({ where: { description: null } });
+  for (const article of noDesc) {
+    const description = await fetchArticleDescription(feedUrl, article.id);
+    if (description !== null) {
+      await prisma.article.update({ where: { id: article.id }, data: { description } });
+    }
   }
 
   return data.items.length;
