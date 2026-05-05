@@ -44,6 +44,11 @@ func (a *AccessSyncer) Run(ctx context.Context) {
 	}
 }
 
+// Refresh runs a single fetch synchronously.
+func (a *AccessSyncer) Refresh(ctx context.Context) error {
+	return a.once(ctx)
+}
+
 func (a *AccessSyncer) once(ctx context.Context) error {
 	var res model.RankingsResponse
 	if err := a.up.getJSON(ctx, "/api/signage/rankings", &res); err != nil {

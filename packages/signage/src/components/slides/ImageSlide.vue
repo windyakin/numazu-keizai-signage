@@ -1,0 +1,41 @@
+<script setup lang="ts">
+defineProps<{
+  url: string;
+  alt?: string;
+}>();
+</script>
+
+<template>
+  <div class="image-slide">
+    <img :src="url" :alt="alt ?? ''" class="image-slide__img" />
+  </div>
+</template>
+
+<style scoped>
+.image-slide {
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  background: #000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.image-slide__img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  display: block;
+  animation: zoom-out 10s ease-out both;
+}
+
+@keyframes zoom-out {
+  from {
+    transform: scale(1.05);
+  }
+  to {
+    transform: scale(1);
+  }
+}
+</style>

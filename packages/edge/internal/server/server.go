@@ -1,6 +1,7 @@
 package server
 
 import (
+	"context"
 	"encoding/json"
 	"net/http"
 
@@ -11,14 +12,42 @@ import (
 	"github.com/windyakin/numazu-keizai-signage/packages/edge/internal/store"
 )
 
-type Server struct {
-	cfg      *config.Config
-	articles *store.Articles
-	rankings *store.Rankings
+// Refresher abstracts a syncer that can perform a one-shot refresh.
+type Refresher interface {
+	Refresh(ctx context.Context) error
 }
 
-func New(cfg *config.Config, articles *store.Articles, rankings *store.Rankings) *Server {
-	return &Server{cfg: cfg, articles: articles, rankings: rankings}
+type Server struct {
+	cfg            *config.Config
+	articles       *store.Articles
+	rankings       *store.Rankings
+	playlistItems  *store.PlaylistItems
+	playlistMedia  *store.PlaylistMedia
+	feedSyncer     Refresher
+	accessSyncer   Refresher
+	playlistSyncer Refresher
+}
+
+func New(
+	cfg *config.Config,
+	articles *store.Articles,
+	rankings *store.Rankings,
+	playlistItems *store.PlaylistItems,
+	playlistMedia *store.PlaylistMedia,
+	feedSyncer Refresher,
+	accessSyncer Refresher,
+	playlistSyncer Refresher,
+) *Server {
+	return &Server{
+		cfg:            cfg,
+		articles:       articles,
+		rankings:       rankings,
+		playlistItems:  playlistItems,
+		playlistMedia:  playlistMedia,
+		feedSyncer:     feedSyncer,
+		accessSyncer:   accessSyncer,
+		playlistSyncer: playlistSyncer,
+	}
 }
 
 func (s *Server) Handler() http.Handler {
@@ -34,6 +63,8 @@ func (s *Server) Handler() http.Handler {
 
 	r.Get("/api/signage/articles", s.handleGetArticles)
 	r.Get("/api/signage/rankings", s.handleGetRankings)
+	r.Get("/api/signage/playlist", s.handleGetPlaylist)
+	r.Post("/api/signage/refresh", s.handleRefresh)
 	r.Get("/media/*", s.handleGetMedia)
 
 	// PoC 用: file:// から XHR/fetch でアクセスして CORS が通ることを検証する

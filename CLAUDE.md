@@ -13,7 +13,8 @@
 /
 ├── packages/
 │   ├── api/        # Hono (Node.js + TypeScript)
-│   └── signage/    # Vue 3 + Vite + TypeScript
+│   ├── signage/    # Vue 3 + Vite + TypeScript（サイネージ表示）
+│   └── admin/      # Vue 3 + Vite + TypeScript + PrimeVue v4（管理画面）
 ├── docker-compose.yml
 ├── nginx/
 │   └── nginx.conf
@@ -178,6 +179,30 @@ VITE_RANKING_DURATION_SEC=16
 
 ---
 
+### admin (`packages/admin`)
+
+**使用技術**
+- Vue 3 + Vite + TypeScript
+- PrimeVue v4（テーマ: Aura）
+- Vue Router 4（Hash History）
+- Pinia
+
+**責務**
+- `/api/admin/` 以下の管理用エンドポイントと通信する
+- 記事・ランキングの確認・手動更新などの管理操作を提供する
+
+**APIクライアント**
+- `src/api/client.ts` の `apiFetch<T>()` 経由でのみ通信する
+- ベース URL は `VITE_API_BASE_URL`（デフォルト `/api/admin`）
+- 既存の `/api/feed/` や `/api/access/` は **使わない**（admin 専用 namespace を使う）
+
+**環境変数**
+```
+VITE_API_BASE_URL=/api/admin
+```
+
+---
+
 ## インフラ
 
 **docker-compose サービス**
@@ -187,12 +212,14 @@ VITE_RANKING_DURATION_SEC=16
 | `postgres` | PostgreSQL 16 |
 | `api` | Node.js 20。`packages/api` をビルドして起動 |
 | `signage` | `packages/signage` のビルド成果物を Nginx で配信 |
+| `admin` | `packages/admin` のビルド成果物を Nginx で配信（未追加） |
 | `nginx` | リバースプロキシ |
 
 **Nginx ルーティング**
 ```
 /api/      → api:3000
 /signage/  → signage コンテナ（静的ファイル）
+/admin/    → admin コンテナ（静的ファイル）※未設定
 ```
 
 ---
@@ -208,7 +235,6 @@ VITE_RANKING_DURATION_SEC=16
 
 ## MVP 後フェーズ（今は実装しない）
 
-- 管理画面（admin）
 - 認証（Auth0 / signage トークン）
 - スライドスケジューリング（開始日・終了日）
 - 画像・動画ファイルのアップロード・管理

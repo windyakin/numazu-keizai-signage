@@ -11,9 +11,9 @@ model Article {
   id          String   @id
   title       String
   imageUrl    String
-  description String?
   start       DateTime
   fetchedAt   DateTime @default(now())
+  description String?
 }
 
 model AccessRanking {
@@ -23,4 +23,52 @@ model AccessRanking {
   rank      Int
   start     DateTime
   fetchedAt DateTime @default(now())
+}
+
+model MediaFile {
+  id            String         @id @default(cuid())
+  storageKey    String         @unique
+  mimeType      String
+  type          MediaFileType
+  originalName  String
+  sizeBytes     BigInt?
+  uploadedAt    DateTime       @default(now())
+  playlistItems PlaylistItem[]
+}
+
+model Playlist {
+  id        String         @id @default(cuid())
+  name      String
+  isActive  Boolean        @default(false)
+  items     PlaylistItem[]
+  createdAt DateTime       @default(now())
+  updatedAt DateTime       @updatedAt
+}
+
+model PlaylistItem {
+  id          String           @id @default(cuid())
+  playlistId  String
+  playlist    Playlist         @relation(fields: [playlistId], references: [id], onDelete: Cascade)
+  type        PlaylistItemType
+  order       Int
+  durationSec Int?
+  mediaFileId String?
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @updatedAt
+  mediaFile   MediaFile?       @relation(fields: [mediaFileId], references: [id])
+
+  @@index([playlistId, order])
+}
+
+enum PlaylistItemType {
+  ARTICLE_LATEST
+  ARTICLE_RANDOM
+  RANKING
+  IMAGE
+  VIDEO
+}
+
+enum MediaFileType {
+  IMAGE
+  VIDEO
 }

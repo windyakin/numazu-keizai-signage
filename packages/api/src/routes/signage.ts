@@ -1,5 +1,8 @@
 import { createRoute, OpenAPIHono, z } from "@hono/zod-openapi";
 import { prisma } from "../db.js";
+import { createStorageClient, getObject } from "../storage.js";
+
+// ─── Schemas ────────────────────────────────────────────────────────────────
 
 const ArticleSchema = z.object({
   id: z.string(),
@@ -26,6 +29,57 @@ const RankingsResponseSchema = z.object({
   fetchedAt: z.string().nullable(),
 });
 
+// ─── Playlist Schemas ────────────────────────────────────────────────────────
+
+const MediaPayloadSchema = z.object({
+  storageKey: z.string(),
+  mimeType: z.string(),
+});
+
+const PlaylistItemSchema = z.discriminatedUnion("type", [
+  z.object({
+    id: z.string(),
+    type: z.literal("ARTICLE_LATEST"),
+    order: z.number(),
+    durationSec: z.number().nullable(),
+    payload: z.null(),
+  }),
+  z.object({
+    id: z.string(),
+    type: z.literal("ARTICLE_RANDOM"),
+    order: z.number(),
+    durationSec: z.number().nullable(),
+    payload: z.null(),
+  }),
+  z.object({
+    id: z.string(),
+    type: z.literal("RANKING"),
+    order: z.number(),
+    durationSec: z.number().nullable(),
+    payload: z.null(),
+  }),
+  z.object({
+    id: z.string(),
+    type: z.literal("IMAGE"),
+    order: z.number(),
+    durationSec: z.number().nullable(),
+    payload: MediaPayloadSchema.nullable(),
+  }),
+  z.object({
+    id: z.string(),
+    type: z.literal("VIDEO"),
+    order: z.number(),
+    durationSec: z.number().nullable(),
+    payload: MediaPayloadSchema.nullable(),
+  }),
+]);
+
+const PlaylistResponseSchema = z.object({
+  items: z.array(PlaylistItemSchema),
+});
+
+// ─── Routes ──────────────────────────────────────────────────────────────────
+
 const getArticlesRoute = createRoute({
   method: "get",
   path: "/api/signage/articles",
@@ -47,6 +101,19 @@ const getRankingsRoute = createRoute({
     },
   },
 });
+
+const getPlaylistRoute = createRoute({
+  method: "get",
+  path: "/api/signage/playlist",
+  responses: {
+    200: {
+      content: { "application/json": { schema: PlaylistResponseSchema } },
+      description: "サイネージ表示用プレイリスト",
+    },
+  },
+});
+
+// ─── Handlers ────────────────────────────────────────────────────────────────
 
 export const signageApp = new OpenAPIHono();
 
@@ -84,4 +151,90 @@ signageApp.openapi(getRankingsRoute, async (c) => {
     })),
     fetchedAt,
   });
+});
+
+signageApp.openapi(getPlaylistRoute, async (c) => {
+  const playlist = await prisma.playlist.findFirst({
+    where: { isActive: true },
+    include: {
+      items: { orderBy: { order: "asc" }, include: { mediaFile: true } },
+    },
+  });
+
+  if (!playlist) {
+    const fallback = [
+      { id: "__fb_ar_1", type: "ARTICLE_RANDOM" as const, order: 1, durationSec: 8, payload: null },
+      { id: "__fb_ar_2", type: "ARTICLE_RANDOM" as const, order: 2, durationSec: 8, payload: null },
+      { id: "__fb_ar_3", type: "ARTICLE_RANDOM" as const, order: 3, durationSec: 8, payload: null },
+      { id: "__fb_ar_4", type: "ARTICLE_RANDOM" as const, order: 4, durationSec: 8, payload: null },
+      { id: "__fb_ar_5", type: "ARTICLE_RANDOM" as const, order: 5, durationSec: 8, payload: null },
+      { id: "__fb_rk",   type: "RANKING"        as const, order: 6, durationSec: 16, payload: null },
+    ];
+    return c.json({ items: fallback });
+  }
+
+  const items = playlist.items.map((item) => {
+    const base = { id: item.id, order: item.order, durationSec: item.durationSec };
+
+    switch (item.type) {
+      case "ARTICLE_LATEST":
+        return { ...base, type: "ARTICLE_LATEST" as const, payload: null };
+      case "ARTICLE_RANDOM":
+        return { ...base, type: "ARTICLE_RANDOM" as const, payload: null };
+      case "RANKING":
+        return { ...base, type: "RANKING" as const, payload: null };
+      case "IMAGE":
+        return {
+          ...base,
+          type: "IMAGE" as const,
+          payload: item.mediaFile
+            ? { storageKey: item.mediaFile.storageKey, mimeType: item.mediaFile.mimeType }
+            : null,
+        };
+      case "VIDEO":
+        return {
+          ...base,
+          type: "VIDEO" as const,
+          payload: item.mediaFile
+            ? { storageKey: item.mediaFile.storageKey, mimeType: item.mediaFile.mimeType }
+            : null,
+        };
+    }
+  });
+
+  return c.json({ items });
+});
+
+// ─── Media proxy ──────────────────────────────────────────────────────────────
+
+const getMediaProxyRoute = createRoute({
+  method: "get",
+  path: "/api/signage/media",
+  request: {
+    query: z.object({ key: z.string().min(1) }),
+  },
+  responses: {
+    200: {
+      content: { "application/octet-stream": { schema: z.any() } },
+      description: "ストレージオブジェクト",
+    },
+    404: {
+      content: { "application/json": { schema: z.object({ error: z.string() }) } },
+      description: "オブジェクトが見つからない",
+    },
+  },
+});
+
+signageApp.openapi(getMediaProxyRoute, async (c) => {
+  const { key } = c.req.valid("query");
+  const bucket = process.env.STORAGE_BUCKET ?? "";
+  try {
+    const { body, contentType } = await getObject(createStorageClient(), bucket, key);
+    c.header("Content-Type", contentType);
+    c.header("Cache-Control", "public, max-age=31536000, immutable");
+    return c.body(body, 200);
+  } catch (e) {
+    console.error(`[signage/media] key=${key} bucket=${bucket}`, e);
+    return c.json({ error: "not found" }, 404);
+  }
 });

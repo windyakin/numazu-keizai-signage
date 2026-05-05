@@ -32,6 +32,25 @@ CREATE TABLE IF NOT EXISTS media_cache (
   retries INTEGER NOT NULL DEFAULT 0,
   downloaded_at DATETIME
 );
+
+CREATE TABLE IF NOT EXISTS playlist_items (
+  id TEXT PRIMARY KEY,
+  type TEXT NOT NULL,
+  item_order INTEGER NOT NULL,
+  duration_sec INTEGER,
+  storage_key TEXT,
+  mime_type TEXT,
+  fetched_at DATETIME NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS playlist_media (
+  storage_key TEXT PRIMARY KEY,
+  local_path TEXT NOT NULL DEFAULT '',
+  mime_type TEXT NOT NULL DEFAULT '',
+  status TEXT NOT NULL DEFAULT 'pending',
+  retries INTEGER NOT NULL DEFAULT 0,
+  downloaded_at DATETIME
+);
 `
 
 func Open(dbPath string) (*sql.DB, error) {

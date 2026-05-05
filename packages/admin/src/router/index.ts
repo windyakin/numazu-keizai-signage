@@ -9,6 +9,21 @@ const router = createRouter({
       name: 'home',
       component: HomeView,
     },
+    {
+      path: '/playlists',
+      name: 'playlists',
+      component: () => import('../views/PlaylistsView.vue'),
+    },
+    {
+      path: '/playlists/:id',
+      name: 'playlist',
+      component: () => import('../views/PlaylistView.vue'),
+    },
+    {
+      path: '/media',
+      name: 'media',
+      component: () => import('../views/MediaView.vue'),
+    },
   ],
 })
 

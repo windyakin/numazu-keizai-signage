@@ -15,6 +15,22 @@ services:
     ports:
       - "5432:5432"
 
+  rustfs:
+    image: rustfs/rustfs:latest
+    environment:
+      RUSTFS_ACCESS_KEY: ${RUSTFS_ACCESS_KEY:-rustfsadmin}
+      RUSTFS_SECRET_KEY: ${RUSTFS_SECRET_KEY:-rustfsadmin}
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    volumes:
+      - rustfs_data:/data
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:9000/health/live || exit 1"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
   api:
     build: ./packages/api
     environment:
@@ -24,8 +40,17 @@ services:
       FEED_FETCH_INTERVAL_MIN: ${FEED_FETCH_INTERVAL_MIN:-30}
       ACCESS_URL: ${ACCESS_URL}
       PORT: "3000"
+      STORAGE_ENDPOINT: http://rustfs:9000
+      STORAGE_REGION: ap-northeast-1
+      STORAGE_BUCKET: ${STORAGE_BUCKET:-signage-media}
+      STORAGE_ACCESS_KEY_ID: ${RUSTFS_ACCESS_KEY:-rustfsadmin}
+      STORAGE_SECRET_ACCESS_KEY: ${RUSTFS_SECRET_KEY:-rustfsadmin}
+      STORAGE_PUBLIC_BASE_URL: ${STORAGE_PUBLIC_BASE_URL:-http://localhost:9000/signage-media}
+      STORAGE_FORCE_PATH_STYLE: "true"
     depends_on:
       postgres:
+        condition: service_healthy
+      rustfs:
         condition: service_healthy
 
   signage:
@@ -50,3 +75,4 @@ services:
 
 volumes:
   postgres_data:
+  rustfs_data:

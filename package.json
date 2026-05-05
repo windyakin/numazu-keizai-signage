@@ -7,13 +7,14 @@
   "scripts": {
     "dev": "run-p dev:api dev:edge dev:signage dev:admin",
     "dev:api": "npm run dev -w packages/api",
-    "dev:edge": "npm run dev -w packages/edge",
+    "dev:edge": "wait-on http://localhost:3000/health && npm run dev -w packages/edge",
     "dev:signage": "npm run dev -w packages/signage",
     "dev:admin": "npm run dev -w packages/admin",
     "prisma:migrate": "npm run prisma:migrate:dev -w packages/api",
     "prisma:generate": "npm run prisma:generate -w packages/api"
   },
   "devDependencies": {
-    "npm-run-all2": "^8.0.4"
+    "npm-run-all2": "^8.0.4",
+    "wait-on": "^9.0.5"
   }
 }

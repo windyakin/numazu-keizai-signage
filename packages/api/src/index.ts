@@ -9,6 +9,8 @@ import { startAccessJob } from "./jobs/accessFetcher.js";
 
 const app = new OpenAPIHono();
 
+app.get("/health", (c) => c.json({ status: "ok" }));
+
 app.route("/", signageApp);
 app.route("/", adminApp);
 app.route("/", mediaApp);

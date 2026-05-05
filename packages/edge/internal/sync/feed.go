@@ -45,6 +45,11 @@ func (f *FeedSyncer) Run(ctx context.Context) {
 	}
 }
 
+// Refresh runs a single fetch synchronously.
+func (f *FeedSyncer) Refresh(ctx context.Context) error {
+	return f.once(ctx)
+}
+
 func (f *FeedSyncer) once(ctx context.Context) error {
 	var res model.ArticlesResponse
 	if err := f.up.getJSON(ctx, "/api/signage/articles", &res); err != nil {
