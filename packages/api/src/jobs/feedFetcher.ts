@@ -31,7 +31,14 @@ export async function fetchFeed(): Promise<number> {
     throw new Error("FEED_IMAGE_BASE_URL is not set");
   }
 
-  const response = await fetch(feedUrl);
+  const response = await fetch(feedUrl, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/x-www-form-urlencoded; charset=UTF-8",
+      "X-Requested-With": "XMLHttpRequest",
+    },
+    body: "mode=async&category=headline&limit=15&from=1",
+  });
   if (!response.ok) {
     throw new Error(`Feed fetch failed: ${response.status} ${response.statusText}`);
   }
@@ -39,7 +46,9 @@ export async function fetchFeed(): Promise<number> {
   const data: FeedResponse = await response.json();
 
   for (const item of data.items) {
-    const imageUrl = item.image ? `${imageBaseUrl}/${item.image}` : "";
+    const imageUrl = item.image
+      ? `${imageBaseUrl.replace(/\/+$/, "")}/${item.image.replace(/^\/+/, "")}`
+      : "";
     const start = new Date(item.start.replace(" ", "T") + "+09:00");
 
     await prisma.article.upsert({
