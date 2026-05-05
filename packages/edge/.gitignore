@@ -1,0 +1,6 @@
+dist/
+media/
+*.db
+*.db-journal
+*.db-wal
+*.db-shm

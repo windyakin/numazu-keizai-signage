@@ -1,0 +1,11 @@
+{
+  "name": "@numazu-keizai-signage/edge",
+  "private": true,
+  "scripts": {
+    "dev": "go run ./cmd/edge",
+    "build": "go build -o dist/edge ./cmd/edge",
+    "test": "go test ./...",
+    "lint": "go vet ./...",
+    "tidy": "go mod tidy"
+  }
+}
