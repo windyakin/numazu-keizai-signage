@@ -20,7 +20,7 @@ const API_BASE_URL =
   import.meta.env.VITE_API_BASE_URL || "http://127.0.0.1:8080/api";
 
 export async function fetchRankings(): Promise<RankingsData> {
-  const res = await fetch(`${API_BASE_URL}/access/rankings`);
+  const res = await fetch(`${API_BASE_URL}/signage/rankings`);
   if (!res.ok) {
     throw new Error(`Failed to fetch rankings: ${res.status}`);
   }

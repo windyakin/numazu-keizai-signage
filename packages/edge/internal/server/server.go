@@ -32,8 +32,8 @@ func (s *Server) Handler() http.Handler {
 		w.Write([]byte(`{"status":"ok"}`))
 	})
 
-	r.Get("/api/feed/articles", s.handleGetArticles)
-	r.Get("/api/access/rankings", s.handleGetRankings)
+	r.Get("/api/signage/articles", s.handleGetArticles)
+	r.Get("/api/signage/rankings", s.handleGetRankings)
 	r.Get("/media/*", s.handleGetMedia)
 
 	// PoC 用: file:// から XHR/fetch でアクセスして CORS が通ることを検証する

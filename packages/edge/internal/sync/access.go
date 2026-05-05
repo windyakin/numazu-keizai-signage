@@ -46,7 +46,7 @@ func (a *AccessSyncer) Run(ctx context.Context) {
 
 func (a *AccessSyncer) once(ctx context.Context) error {
 	var res model.RankingsResponse
-	if err := a.up.getJSON(ctx, "/api/access/rankings", &res); err != nil {
+	if err := a.up.getJSON(ctx, "/api/signage/rankings", &res); err != nil {
 		return err
 	}
 

@@ -1,16 +1,16 @@
 import { serve } from "@hono/node-server";
 import { swaggerUI } from "@hono/swagger-ui";
 import { OpenAPIHono } from "@hono/zod-openapi";
-import { feedApp } from "./routes/feed.js";
-import { accessApp } from "./routes/access.js";
+import { signageApp } from "./routes/signage.js";
+import { adminApp } from "./routes/admin.js";
 import { mediaApp } from "./routes/media.js";
 import { startFeedJob } from "./jobs/feedFetcher.js";
 import { startAccessJob } from "./jobs/accessFetcher.js";
 
 const app = new OpenAPIHono();
 
-app.route("/", feedApp);
-app.route("/", accessApp);
+app.route("/", signageApp);
+app.route("/", adminApp);
 app.route("/", mediaApp);
 
 app.doc("/doc/json", {

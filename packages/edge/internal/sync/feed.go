@@ -47,7 +47,7 @@ func (f *FeedSyncer) Run(ctx context.Context) {
 
 func (f *FeedSyncer) once(ctx context.Context) error {
 	var res model.ArticlesResponse
-	if err := f.up.getJSON(ctx, "/api/feed/articles", &res); err != nil {
+	if err := f.up.getJSON(ctx, "/api/signage/articles", &res); err != nil {
 		return err
 	}
 

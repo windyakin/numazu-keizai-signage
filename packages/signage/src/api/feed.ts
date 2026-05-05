@@ -14,7 +14,7 @@ const API_BASE_URL =
   import.meta.env.VITE_API_BASE_URL || "http://127.0.0.1:8080/api";
 
 export async function fetchArticles(): Promise<Article[]> {
-  const res = await fetch(`${API_BASE_URL}/feed/articles`);
+  const res = await fetch(`${API_BASE_URL}/signage/articles`);
   if (!res.ok) {
     throw new Error(`Failed to fetch articles: ${res.status}`);
   }
