@@ -14,3 +14,12 @@ model Article {
   start     DateTime
   fetchedAt DateTime @default(now())
 }
+
+model AccessRanking {
+  id        String   @id
+  title     String
+  imageUrl  String
+  rank      Int
+  start     DateTime
+  fetchedAt DateTime @default(now())
+}
