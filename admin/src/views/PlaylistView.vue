@@ -14,7 +14,7 @@ import Tag from 'primevue/tag'
 import ToggleSwitch from 'primevue/toggleswitch'
 import { usePlaylistStore } from '../stores/usePlaylistStore'
 import { useMediaStore } from '../stores/useMediaStore'
-import type { PlaylistItemType, CreatePlaylistItemBody } from '../api/playlist'
+import type { PlaylistItem, PlaylistItemType, CreatePlaylistItemBody } from '../api/playlist'
 import type { MediaFile } from '../api/media'
 
 const route = useRoute()
@@ -232,7 +232,7 @@ function durationLabel(item: (typeof localItems.value)[0]): string {
       </Column>
 
       <Column header="種別" style="width: 10rem">
-        <template #body="{ data }">
+        <template #body="{ data }: { data: PlaylistItem }">
           <Tag :value="typeLabel[data.type]" :severity="typeSeverity[data.type]" />
         </template>
       </Column>
