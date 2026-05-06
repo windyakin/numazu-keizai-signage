@@ -14,6 +14,7 @@ const emit = defineEmits<{ ended: [] }>();
       autoplay
       muted
       playsinline
+      disableremoteplayback
       class="video-slide__video"
       @ended="emit('ended')"
     />
