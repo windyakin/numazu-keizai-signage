@@ -12,7 +12,6 @@ const emit = defineEmits<{ ended: [] }>();
     <video
       :src="url"
       autoplay
-      muted
       playsinline
       disableremoteplayback
       class="video-slide__video"
