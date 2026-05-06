@@ -2,16 +2,19 @@
   "name": "numazu-keizai-signage",
   "private": true,
   "workspaces": [
-    "packages/*"
+    "api",
+    "signage",
+    "admin",
+    "edge"
   ],
   "scripts": {
     "dev": "run-p dev:api dev:edge dev:signage dev:admin",
-    "dev:api": "npm run dev -w packages/api",
-    "dev:edge": "wait-on http://localhost:3000/health && npm run dev -w packages/edge",
-    "dev:signage": "npm run dev -w packages/signage",
-    "dev:admin": "npm run dev -w packages/admin",
-    "prisma:migrate": "npm run prisma:migrate:dev -w packages/api",
-    "prisma:generate": "npm run prisma:generate -w packages/api"
+    "dev:api": "npm run dev -w api",
+    "dev:edge": "wait-on http://localhost:3000/health && npm run dev -w edge",
+    "dev:signage": "npm run dev -w signage",
+    "dev:admin": "npm run dev -w admin",
+    "prisma:migrate": "npm run prisma:migrate:dev -w api",
+    "prisma:generate": "npm run prisma:generate -w api"
   },
   "devDependencies": {
     "npm-run-all2": "^8.0.4",

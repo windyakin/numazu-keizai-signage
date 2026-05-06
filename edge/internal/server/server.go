@@ -8,8 +8,8 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
 
-	"github.com/windyakin/numazu-keizai-signage/packages/edge/internal/config"
-	"github.com/windyakin/numazu-keizai-signage/packages/edge/internal/store"
+	"github.com/windyakin/numazu-keizai-signage/edge/internal/config"
+	"github.com/windyakin/numazu-keizai-signage/edge/internal/store"
 )
 
 // Refresher abstracts a syncer that can perform a one-shot refresh.

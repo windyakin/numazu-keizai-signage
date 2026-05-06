@@ -17,7 +17,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/windyakin/numazu-keizai-signage/packages/edge/internal/store"
+	"github.com/windyakin/numazu-keizai-signage/edge/internal/store"
 )
 
 const mediaEndpointPath = "/api/signage/media"

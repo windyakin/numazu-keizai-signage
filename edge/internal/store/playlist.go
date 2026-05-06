@@ -5,7 +5,7 @@ import (
 	"database/sql"
 	"time"
 
-	"github.com/windyakin/numazu-keizai-signage/packages/edge/internal/model"
+	"github.com/windyakin/numazu-keizai-signage/edge/internal/model"
 )
 
 type PlaylistItems struct {

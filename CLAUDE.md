@@ -11,10 +11,9 @@
 
 ```
 /
-├── packages/
-│   ├── api/        # Hono (Node.js + TypeScript)
-│   ├── signage/    # Vue 3 + Vite + TypeScript（サイネージ表示）
-│   └── admin/      # Vue 3 + Vite + TypeScript + PrimeVue v4（管理画面）
+├── api/            # Hono (Node.js + TypeScript)
+├── signage/        # Vue 3 + Vite + TypeScript（サイネージ表示）
+├── admin/          # Vue 3 + Vite + TypeScript + PrimeVue v4（管理画面）
 ├── docker-compose.yml
 ├── nginx/
 │   └── nginx.conf
@@ -58,7 +57,7 @@ type ArticlesResponse = {
 
 ## アプリケーション仕様
 
-### api (`packages/api`)
+### api (`api`)
 
 **使用技術**
 - Hono (Node.js + TypeScript)
@@ -157,7 +156,7 @@ STORAGE_PUBLIC_BASE_URL=http://localhost:9000/signage-media
 
 ---
 
-### signage (`packages/signage`)
+### signage (`signage`)
 
 **使用技術**
 - Vue 3 + Vite + TypeScript
@@ -204,7 +203,7 @@ VITE_RANKING_DURATION_SEC=16
 
 ---
 
-### admin (`packages/admin`)
+### admin (`admin`)
 
 **使用技術**
 - Vue 3 + Vite + TypeScript
@@ -235,9 +234,9 @@ VITE_API_BASE_URL=/api/admin
 | サービス | 内容 |
 |---------|------|
 | `postgres` | PostgreSQL 16 |
-| `api` | Node.js 20。`packages/api` をビルドして起動 |
-| `signage` | `packages/signage` のビルド成果物を Nginx で配信 |
-| `admin` | `packages/admin` のビルド成果物を Nginx で配信（未追加） |
+| `api` | Node.js 20。`api` をビルドして起動 |
+| `signage` | `signage` のビルド成果物を Nginx で配信 |
+| `admin` | `admin` のビルド成果物を Nginx で配信（未追加） |
 | `nginx` | リバースプロキシ |
 
 **Nginx ルーティング**

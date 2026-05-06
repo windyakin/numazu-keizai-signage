@@ -10,10 +10,10 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/windyakin/numazu-keizai-signage/packages/edge/internal/config"
-	"github.com/windyakin/numazu-keizai-signage/packages/edge/internal/server"
-	"github.com/windyakin/numazu-keizai-signage/packages/edge/internal/store"
-	"github.com/windyakin/numazu-keizai-signage/packages/edge/internal/sync"
+	"github.com/windyakin/numazu-keizai-signage/edge/internal/config"
+	"github.com/windyakin/numazu-keizai-signage/edge/internal/server"
+	"github.com/windyakin/numazu-keizai-signage/edge/internal/store"
+	"github.com/windyakin/numazu-keizai-signage/edge/internal/sync"
 )
 
 func main() {

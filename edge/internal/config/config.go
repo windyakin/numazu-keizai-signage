@@ -63,7 +63,7 @@ func executableDir() (string, error) {
 	}
 	dir := filepath.Dir(exe)
 	// `go run` puts the binary under TMPDIR/go-build*/exe → fall back to CWD so
-	// `go run ./cmd/edge` keeps storing media under packages/edge/.
+	// `go run ./cmd/edge` keeps storing media under edge/.
 	if isGoBuildTmp(dir) {
 		if cwd, err := os.Getwd(); err == nil {
 			return cwd, nil

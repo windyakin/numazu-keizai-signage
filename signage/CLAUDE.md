@@ -1,13 +1,13 @@
 # CLAUDE.md — signage パッケージ
 
-ルートの [CLAUDE.md](../../CLAUDE.md) も併読すること。ここには signage パッケージ固有の実装詳細のみを書く。
+ルートの [CLAUDE.md](../CLAUDE.md) も併読すること。ここには signage パッケージ固有の実装詳細のみを書く。
 
 ---
 
 ## ディレクトリ構成
 
 ```
-packages/signage/
+signage/
 ├── index.html
 ├── vite.config.ts
 ├── nginx.conf                 # 本番配信用（docker-compose の nginx から参照）

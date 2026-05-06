@@ -6,7 +6,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/windyakin/numazu-keizai-signage/packages/edge/internal/model"
+	"github.com/windyakin/numazu-keizai-signage/edge/internal/model"
 )
 
 // 上流 api `/api/signage/articles` の最新件数と揃える。signage への返却件数も

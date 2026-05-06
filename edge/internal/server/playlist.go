@@ -5,7 +5,7 @@ import (
 	"log"
 	"net/http"
 
-	"github.com/windyakin/numazu-keizai-signage/packages/edge/internal/model"
+	"github.com/windyakin/numazu-keizai-signage/edge/internal/model"
 )
 
 type playlistItemDTO struct {

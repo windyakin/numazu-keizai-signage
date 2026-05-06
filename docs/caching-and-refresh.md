@@ -27,9 +27,9 @@ flowchart TD
 
 | ジョブ | トリガー | 周期 | 動作 |
 |---|---|---|---|
-| `fetchFeed()` [feedFetcher.ts:36-111](../packages/api/src/jobs/feedFetcher.ts#L36-L111) | 起動時即実行 → setInterval | `FEED_FETCH_INTERVAL_MIN`（既定30分） | 外部フィード POST → `Article.upsert`（id キー） |
-| `fetchAccessRanking()` [accessFetcher.ts:23-86](../packages/api/src/jobs/accessFetcher.ts#L23-L86) | 起動時即実行 → setInterval | 同上（30分） | 外部 POST → **deleteMany → create** で全置換 |
-| 手動 refresh [admin.ts:398-416](../packages/api/src/routes/admin.ts#L398-L416) | `POST /api/admin/feed/refresh` 等 | - | 同ロジックを同期実行 |
+| `fetchFeed()` [feedFetcher.ts:36-111](../api/src/jobs/feedFetcher.ts#L36-L111) | 起動時即実行 → setInterval | `FEED_FETCH_INTERVAL_MIN`（既定30分） | 外部フィード POST → `Article.upsert`（id キー） |
+| `fetchAccessRanking()` [accessFetcher.ts:23-86](../api/src/jobs/accessFetcher.ts#L23-L86) | 起動時即実行 → setInterval | 同上（30分） | 外部 POST → **deleteMany → create** で全置換 |
+| 手動 refresh [admin.ts:398-416](../api/src/routes/admin.ts#L398-L416) | `POST /api/admin/feed/refresh` 等 | - | 同ロジックを同期実行 |
 
 ### signage 向けエンドポイント
 
@@ -54,17 +54,17 @@ flowchart TD
 
 ### Sync goroutine（並行3本）
 
-[main.go:45-52](../packages/edge/cmd/edge/main.go#L45-L52) で起動。すべて起動時に1回 + `POLL_INTERVAL_MIN`（既定5分）の `time.Ticker`：
+[main.go:45-52](../edge/cmd/edge/main.go#L45-L52) で起動。すべて起動時に1回 + `POLL_INTERVAL_MIN`（既定5分）の `time.Ticker`：
 
 | sync | 取得元 | 保存戦略 |
 |---|---|---|
-| Feed [sync/feed.go:28-72](../packages/edge/internal/sync/feed.go#L28-L72) | api `GET /api/signage/articles` | `articles` を **id で upsert** + 画像URLを `media_cache` に enqueue |
-| Access [sync/access.go:28-71](../packages/edge/internal/sync/access.go#L28-L71) | api `GET /api/signage/rankings` | `rankings` を **全置換** + 画像URLを enqueue |
-| Playlist [sync/playlist.go:71-141](../packages/edge/internal/sync/playlist.go#L71-L141) | api `GET /api/signage/playlist` | `playlist_items` を全置換 + IMAGE/VIDEO の `storageKey` を `playlist_media` に enqueue |
+| Feed [sync/feed.go:28-72](../edge/internal/sync/feed.go#L28-L72) | api `GET /api/signage/articles` | `articles` を **id で upsert** + 画像URLを `media_cache` に enqueue |
+| Access [sync/access.go:28-71](../edge/internal/sync/access.go#L28-L71) | api `GET /api/signage/rankings` | `rankings` を **全置換** + 画像URLを enqueue |
+| Playlist [sync/playlist.go:71-141](../edge/internal/sync/playlist.go#L71-L141) | api `GET /api/signage/playlist` | `playlist_items` を全置換 + IMAGE/VIDEO の `storageKey` を `playlist_media` に enqueue |
 
 ### MediaSyncer（画像/動画 DL ワーカー）
 
-[sync/media.go:84-183](../packages/edge/internal/sync/media.go#L84-L183)
+[sync/media.go:84-183](../edge/internal/sync/media.go#L84-L183)
 
 - **トリガー**: 30秒ごとの ticker、または sync 完了時の trigger チャネル
 - **並列度**: 4 worker
@@ -73,9 +73,9 @@ flowchart TD
 
 ### signage 向けエンドポイント（すべてキャッシュから返す）
 
-- `GET /api/feed/articles` [server/feed.go:21-42](../packages/edge/internal/server/feed.go#L21-L42) → `articles JOIN media_cache WHERE status='ready'`
-- `GET /api/access/rankings` [server/access.go:22-49](../packages/edge/internal/server/access.go#L22-L49) → 同様の JOIN
-- `GET /api/signage/playlist` [server/playlist.go:28-77](../packages/edge/internal/server/playlist.go#L28-L77) → `playlist_items` のうち media が ready のもの
+- `GET /api/feed/articles` [server/feed.go:21-42](../edge/internal/server/feed.go#L21-L42) → `articles JOIN media_cache WHERE status='ready'`
+- `GET /api/access/rankings` [server/access.go:22-49](../edge/internal/server/access.go#L22-L49) → 同様の JOIN
+- `GET /api/signage/playlist` [server/playlist.go:28-77](../edge/internal/server/playlist.go#L28-L77) → `playlist_items` のうち media が ready のもの
 
 `imageUrl` は `MEDIA_URL_PREFIX + localPath`（既定では `file://...`）に書き換えて返す。
 
@@ -87,7 +87,7 @@ flowchart TD
 
 **保存先**: Vue の `ref`（メモリのみ。IndexedDB等は使わない）
 
-### 状態 [SlideArea.vue](../packages/signage/src/components/layout/SlideArea.vue)
+### 状態 [SlideArea.vue](../signage/src/components/layout/SlideArea.vue)
 
 ```ts
 playlistItems = ref<PlaylistItem[]>([])
@@ -110,7 +110,7 @@ playlist と articles/rankings で取得戦略が違う:
 
 `pendingPlaylist` への上書きは無条件（差分判定なし）。空配列が返ったときは swap せず現プレイリストを維持する。fetch 失敗（wrap 時）は silent ignore で既存プレイリスト続行。
 
-### isReady 判定 [SlideArea.vue:36-50](../packages/signage/src/components/layout/SlideArea.vue#L36-L50)
+### isReady 判定 [SlideArea.vue:36-50](../signage/src/components/layout/SlideArea.vue#L36-L50)
 
 - ARTICLE_LATEST/RANDOM → `articles.length > 0`
 - RANKING → `rankingsData.rankings.length > 0`

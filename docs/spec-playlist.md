@@ -27,7 +27,7 @@
 
 ## 2. データモデル
 
-### 2.1 Prisma スキーマ追加 (`packages/api/prisma/schema.prisma`)
+### 2.1 Prisma スキーマ追加 (`api/prisma/schema.prisma`)
 
 ```prisma
 enum PlaylistItemType {
@@ -254,7 +254,7 @@ api (Hono)
 
 ### 4.2 ストレージクライアント実装
 
-新規ファイル: `packages/api/src/storage.ts`
+新規ファイル: `api/src/storage.ts`
 
 ```typescript
 import { S3Client, PutObjectCommand, DeleteObjectCommand } from "@aws-sdk/client-s3"
@@ -368,7 +368,7 @@ STORAGE_FORCE_PATH_STYLE=true               # パス形式 URL 必須
 
 ### 5.4 API クライアント追加
 
-新規ファイル: `packages/signage/src/api/playlist.ts`
+新規ファイル: `signage/src/api/playlist.ts`
 
 ```typescript
 export type PlaylistItemType = 'ARTICLE_LATEST' | 'ARTICLE_RANDOM' | 'RANKING' | 'IMAGE' | 'VIDEO'
@@ -503,7 +503,7 @@ async function handleUpload(event: FileUploadUploaderEvent) {
 
 ### 6.4 Pinia ストア
 
-`packages/admin/src/stores/usePlaylistStore.ts`
+`admin/src/stores/usePlaylistStore.ts`
 
 ```typescript
 // state
@@ -519,7 +519,7 @@ removeItem(id)        // DELETE /api/admin/playlist/:id
 reorder(ids)          // PUT /api/admin/playlist/reorder
 ```
 
-`packages/admin/src/stores/useMediaStore.ts`
+`admin/src/stores/useMediaStore.ts`
 
 ```typescript
 const files = ref<AdminMediaFile[]>([])
@@ -531,8 +531,8 @@ removeMedia(id)         // DELETE /api/admin/media/:id
 
 ### 6.5 Admin API クライアント追加ファイル
 
-- `packages/admin/src/api/playlist.ts` — プレイリスト CRUD
-- `packages/admin/src/api/media.ts` — メディアファイル管理
+- `admin/src/api/playlist.ts` — プレイリスト CRUD
+- `admin/src/api/media.ts` — メディアファイル管理
 
 **注意:** `apiFetch` を呼ぶ際は `headers: { 'Content-Type': 'application/json' }` を明示すること（現在の `apiFetch` は自動付与しない）。
 
@@ -645,9 +645,9 @@ VITE_API_BASE_URL=/api/admin
 
 ### Phase 1: api バックエンド
 
-1. `@aws-sdk/client-s3` / `@aws-sdk/s3-request-presigner` を `packages/api/package.json` に追加
+1. `@aws-sdk/client-s3` / `@aws-sdk/s3-request-presigner` を `api/package.json` に追加
 2. `schema.prisma` に `MediaFile` / `PlaylistItem` モデルを追加 → `prisma migrate dev`
-3. `packages/api/src/storage.ts` 作成
+3. `api/src/storage.ts` 作成
 4. `admin.ts` にメディア管理エンドポイント追加（upload-url / register / list / delete）
 5. `admin.ts` にプレイリスト管理エンドポイント追加（CRUD + reorder）
 6. `signage.ts` に `GET /api/signage/playlist` 追加

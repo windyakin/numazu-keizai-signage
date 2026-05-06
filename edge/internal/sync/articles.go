@@ -5,8 +5,8 @@ import (
 	"log"
 	"time"
 
-	"github.com/windyakin/numazu-keizai-signage/packages/edge/internal/model"
-	"github.com/windyakin/numazu-keizai-signage/packages/edge/internal/store"
+	"github.com/windyakin/numazu-keizai-signage/edge/internal/model"
+	"github.com/windyakin/numazu-keizai-signage/edge/internal/store"
 )
 
 type ArticlesSyncer struct {

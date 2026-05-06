@@ -1,13 +1,13 @@
 # CLAUDE.md — api パッケージ
 
-ルートの [CLAUDE.md](../../CLAUDE.md) も併読すること。ここには api パッケージ固有の実装詳細のみを書く。
+ルートの [CLAUDE.md](../CLAUDE.md) も併読すること。ここには api パッケージ固有の実装詳細のみを書く。
 
 ---
 
 ## ディレクトリ構成
 
 ```
-packages/api/
+api/
 ├── prisma/
 │   ├── schema.prisma          # Article / AccessRanking モデル
 │   └── migrations/            # prisma migrate が生成するマイグレーション

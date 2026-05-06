@@ -1,4 +1,4 @@
-module github.com/windyakin/numazu-keizai-signage/packages/edge
+module github.com/windyakin/numazu-keizai-signage/edge
 
 go 1.25.0
 

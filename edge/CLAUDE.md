@@ -109,7 +109,7 @@ media_cache    (storage_key PK, local_path, mime_type, status, retries, download
 - `Origin: file:` または `Origin: null` の場合: `file://<MEDIA_DIR>/<local_path>` を返す
 - それ以外（http/https/curl 等）: `http(s)://<host>/media/<local_path>` を返す
 
-signage 側の API クライアント型 (`packages/signage/src/api/articles.ts`, `rankings.ts`) は `imageUrl: string` のままなので、edge の DTO フィールド名も `imageUrl` を維持する（中身はファイル URL に解決済み）。
+signage 側の API クライアント型 (`signage/src/api/articles.ts`, `rankings.ts`) は `imageUrl: string` のままなので、edge の DTO フィールド名も `imageUrl` を維持する（中身はファイル URL に解決済み）。
 
 ---
 

@@ -1,13 +1,13 @@
 # CLAUDE.md — admin パッケージ
 
-ルートの [CLAUDE.md](../../CLAUDE.md) も併読すること。ここには admin パッケージ固有の実装詳細のみを書く。
+ルートの [CLAUDE.md](../CLAUDE.md) も併読すること。ここには admin パッケージ固有の実装詳細のみを書く。
 
 ---
 
 ## ディレクトリ構成
 
 ```
-packages/admin/
+admin/
 ├── index.html
 ├── vite.config.ts
 ├── Dockerfile                  # 未作成（Docker 対応は後フェーズ）
