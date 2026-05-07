@@ -57,6 +57,7 @@ const MediaFileSchema = z.object({
   originalName: z.string(),
   sizeBytes: z.string().nullable(),
   uploadedAt: z.string(),
+  playlistItemCount: z.number(),
 });
 
 const MediaListResponseSchema = z.object({
@@ -212,6 +213,10 @@ const deleteMediaRoute = createRoute({
     404: {
       content: { "application/json": { schema: ErrorResponseSchema } },
       description: "未発見",
+    },
+    409: {
+      content: { "application/json": { schema: ErrorResponseSchema } },
+      description: "プレイリストで使用中のため削除不可",
     },
     500: {
       content: { "application/json": { schema: ErrorResponseSchema } },
@@ -425,6 +430,7 @@ adminApp.openapi(getMediaRoute, async (c) => {
   const files = await prisma.mediaFile.findMany({
     where: { type: { in: ["IMAGE", "VIDEO"] } },
     orderBy: { uploadedAt: "desc" },
+    include: { _count: { select: { playlistItems: true } } },
   });
 
   return c.json({
@@ -437,6 +443,7 @@ adminApp.openapi(getMediaRoute, async (c) => {
       originalName: f.originalName,
       sizeBytes: f.sizeBytes?.toString() ?? null,
       uploadedAt: f.uploadedAt.toISOString(),
+      playlistItemCount: f._count.playlistItems,
     })),
   });
 });
@@ -486,6 +493,7 @@ adminApp.openapi(uploadMediaRoute, async (c) => {
         originalName: record.originalName,
         sizeBytes: record.sizeBytes?.toString() ?? null,
         uploadedAt: record.uploadedAt.toISOString(),
+        playlistItemCount: 0,
       },
       201
     );
@@ -497,8 +505,18 @@ adminApp.openapi(uploadMediaRoute, async (c) => {
 
 adminApp.openapi(deleteMediaRoute, async (c) => {
   const { id } = c.req.valid("param");
-  const file = await prisma.mediaFile.findUnique({ where: { id } });
+  const file = await prisma.mediaFile.findUnique({
+    where: { id },
+    include: { _count: { select: { playlistItems: true } } },
+  });
   if (!file) return c.json({ error: "Not found" }, 404);
+
+  if (file._count.playlistItems > 0) {
+    return c.json(
+      { error: `プレイリストで使用中のため削除できません（${file._count.playlistItems}件）` },
+      409,
+    );
+  }
 
   try {
     const bucket = process.env.STORAGE_BUCKET ?? "signage-media";

@@ -4,8 +4,7 @@ import { useRouter } from 'vue-router'
 import { useConfirm } from 'primevue/useconfirm'
 import { useToast } from 'primevue/usetoast'
 import Button from 'primevue/button'
-import Column from 'primevue/column'
-import DataTable from 'primevue/datatable'
+import Card from 'primevue/card'
 import Dialog from 'primevue/dialog'
 import InputText from 'primevue/inputtext'
 import Tag from 'primevue/tag'
@@ -18,7 +17,6 @@ const toast = useToast()
 
 onMounted(() => store.load())
 
-// 新規作成
 const showCreateDialog = ref(false)
 const newName = ref('')
 
@@ -38,7 +36,6 @@ async function confirmCreate() {
   }
 }
 
-// アクティブ化
 async function activate(id: string, name: string) {
   try {
     await store.activate(id)
@@ -48,15 +45,13 @@ async function activate(id: string, name: string) {
   }
 }
 
-// 削除
 function confirmDelete(id: string, name: string) {
   confirm.require({
     message: `「${name}」を削除しますか？`,
     header: '削除の確認',
     icon: 'pi pi-exclamation-triangle',
-    acceptLabel: '削除',
-    rejectLabel: 'キャンセル',
-    acceptClass: 'p-button-danger',
+    rejectProps: { label: 'キャンセル', severity: 'secondary', outlined: true },
+    acceptProps: { label: '削除', severity: 'danger' },
     accept: async () => {
       try {
         await store.remove(id)
@@ -71,65 +66,61 @@ function confirmDelete(id: string, name: string) {
 
 <template>
   <div class="playlists-view">
-    <div class="header">
-      <h1>プレイリスト管理</h1>
+    <div class="flex align-items-center justify-content-between mb-4">
+      <h1 class="m-0 text-xl">プレイリスト管理</h1>
       <Button label="新規作成" icon="pi pi-plus" @click="openCreateDialog" />
     </div>
 
-    <DataTable
-      :value="store.playlists"
-      :loading="store.loading"
-      stripedRows
-      responsiveLayout="scroll"
-    >
-      <template #empty>プレイリストがありません。</template>
-
-      <Column header="名前">
-        <template #body="{ data }">
-          <span>{{ data.name }}</span>
-          <Tag v-if="data.isActive" value="アクティブ" severity="success" class="ml-2" />
-        </template>
-      </Column>
-
-      <Column header="アイテム数" style="width: 8rem">
-        <template #body="{ data }">{{ data.itemCount }}</template>
-      </Column>
-
-      <Column header="操作" style="width: 14rem">
-        <template #body="{ data }">
-          <div class="row-actions">
-            <Button
-              label="編集"
-              icon="pi pi-pencil"
-              size="small"
-              text
-              @click="router.push(`/playlists/${data.id}`)"
-            />
-            <Button
-              v-if="!data.isActive"
-              label="アクティブにする"
-              icon="pi pi-check-circle"
-              size="small"
-              text
-              severity="success"
-              @click="activate(data.id, data.name)"
-            />
-            <Button
-              v-if="!data.isActive"
-              icon="pi pi-trash"
-              size="small"
-              text
-              severity="danger"
-              @click="confirmDelete(data.id, data.name)"
-            />
+    <div v-if="store.loading" class="text-center text-color-secondary py-4">
+      読み込み中...
+    </div>
+    <div v-else-if="store.playlists.length === 0" class="text-center text-color-secondary py-4">
+      プレイリストがありません。
+    </div>
+    <div v-else class="flex flex-column gap-3">
+      <Card
+        v-for="playlist in store.playlists"
+        :key="playlist.id"
+        class="cursor-pointer"
+        @click="router.push(`/playlists/${playlist.id}`)"
+      >
+        <template #content>
+          <div class="flex flex-row align-items-center gap-3">
+            <span class="pi pi-list text-4xl text-color-secondary" />
+            <div class="flex flex-column gap-1 flex-grow-1">
+              <div class="flex align-items-center gap-2">
+                <span class="font-semibold">{{ playlist.name }}</span>
+                <Tag v-if="playlist.isActive" value="アクティブ" severity="success" />
+              </div>
+              <span class="text-sm text-color-secondary">アイテム数: {{ playlist.itemCount }}</span>
+            </div>
+            <div class="flex align-items-center gap-1" @click.stop>
+              <Button
+                v-if="!playlist.isActive"
+                label="アクティブにする"
+                icon="pi pi-check-circle"
+                size="small"
+                text
+                severity="success"
+                @click="activate(playlist.id, playlist.name)"
+              />
+              <Button
+                v-if="!playlist.isActive"
+                icon="pi pi-trash"
+                size="small"
+                text
+                severity="danger"
+                @click="confirmDelete(playlist.id, playlist.name)"
+              />
+            </div>
           </div>
         </template>
-      </Column>
-    </DataTable>
+      </Card>
+    </div>
 
     <Dialog v-model:visible="showCreateDialog" header="新規プレイリスト作成" modal style="width: 24rem">
-      <div class="dialog-body">
-        <label>名前</label>
+      <div class="flex flex-column gap-2 py-2">
+        <label class="font-semibold text-sm">名前</label>
         <InputText v-model="newName" class="w-full" placeholder="プレイリスト名" @keyup.enter="confirmCreate" />
       </div>
       <template #footer>
@@ -141,47 +132,4 @@ function confirmDelete(id: string, name: string) {
 </template>
 
 <style scoped>
-.playlists-view {
-  padding: 2rem;
-  max-width: 900px;
-  margin: 0 auto;
-}
-
-.header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin-bottom: 1.5rem;
-}
-
-.header h1 {
-  margin: 0;
-  font-size: 1.5rem;
-}
-
-.row-actions {
-  display: flex;
-  gap: 0.25rem;
-  align-items: center;
-}
-
-.ml-2 {
-  margin-left: 0.5rem;
-}
-
-.dialog-body {
-  display: flex;
-  flex-direction: column;
-  gap: 0.5rem;
-  padding: 0.5rem 0;
-}
-
-.dialog-body label {
-  font-weight: 600;
-  font-size: 0.875rem;
-}
-
-.w-full {
-  width: 100%;
-}
 </style>

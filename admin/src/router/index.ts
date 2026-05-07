@@ -1,5 +1,6 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import HomeView from '../views/HomeView.vue'
+import { useMediaStore } from '../stores/useMediaStore'
 
 const router = createRouter({
   history: createWebHistory(),
@@ -25,6 +26,12 @@ const router = createRouter({
       component: () => import('../views/MediaView.vue'),
     },
   ],
+})
+
+router.beforeEach((to, from) => {
+  if (to.fullPath === from.fullPath) return
+  const media = useMediaStore()
+  if (media.uploading) return false
 })
 
 export default router

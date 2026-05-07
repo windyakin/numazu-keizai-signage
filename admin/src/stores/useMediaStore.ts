@@ -2,11 +2,27 @@ import { defineStore } from 'pinia'
 import { ref } from 'vue'
 import { fetchMedia, uploadMedia, deleteMedia, type MediaFile } from '../api/media'
 
+export interface UploadFailure {
+  file: File
+  error: unknown
+}
+
+export interface UploadResult {
+  uploaded: number
+  failed: UploadFailure[]
+}
+
 export const useMediaStore = defineStore('media', () => {
   const files = ref<MediaFile[]>([])
   const loading = ref(false)
   const uploading = ref(false)
   const error = ref<string | null>(null)
+
+  const uploadIndex = ref(0)
+  const uploadTotal = ref(0)
+  const uploadFileName = ref('')
+  const uploadLoaded = ref(0)
+  const uploadFileSize = ref(0)
 
   async function load() {
     loading.value = true
@@ -20,15 +36,41 @@ export const useMediaStore = defineStore('media', () => {
     }
   }
 
-  async function upload(file: File) {
+  async function uploadAll(targets: File[]): Promise<UploadResult> {
+    if (uploading.value || targets.length === 0) {
+      return { uploaded: 0, failed: [] }
+    }
     uploading.value = true
+    uploadTotal.value = targets.length
+    const failed: UploadFailure[] = []
+    let uploaded = 0
     try {
-      const registered = await uploadMedia(file)
-      files.value = [registered, ...files.value]
-      return registered
+      for (let i = 0; i < targets.length; i++) {
+        const file = targets[i]
+        uploadIndex.value = i
+        uploadFileName.value = file.name
+        uploadLoaded.value = 0
+        uploadFileSize.value = file.size
+        try {
+          const registered = await uploadMedia(file, ({ loaded, total }) => {
+            uploadLoaded.value = loaded
+            uploadFileSize.value = total
+          })
+          files.value = [registered, ...files.value]
+          uploaded++
+        } catch (e) {
+          failed.push({ file, error: e })
+        }
+      }
     } finally {
       uploading.value = false
+      uploadIndex.value = 0
+      uploadTotal.value = 0
+      uploadFileName.value = ''
+      uploadLoaded.value = 0
+      uploadFileSize.value = 0
     }
+    return { uploaded, failed }
   }
 
   async function remove(id: string) {
@@ -36,5 +78,18 @@ export const useMediaStore = defineStore('media', () => {
     files.value = files.value.filter((f) => f.id !== id)
   }
 
-  return { files, loading, uploading, error, load, upload, remove }
+  return {
+    files,
+    loading,
+    uploading,
+    error,
+    uploadIndex,
+    uploadTotal,
+    uploadFileName,
+    uploadLoaded,
+    uploadFileSize,
+    load,
+    uploadAll,
+    remove,
+  }
 })

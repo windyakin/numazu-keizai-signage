@@ -1,61 +1,46 @@
 <script setup lang="ts">
-import { useRouter } from 'vue-router'
-
-const router = useRouter()
+import { RouterLink } from 'vue-router'
+import Card from 'primevue/card'
 </script>
 
 <template>
-  <div class="home-view">
-    <h1>管理画面</h1>
-    <div class="menu">
-      <div class="menu-card" @click="router.push('/playlists')">
-        <span class="pi pi-list" />
-        <span>プレイリスト管理</span>
-      </div>
-      <div class="menu-card" @click="router.push('/media')">
-        <span class="pi pi-images" />
-        <span>メディア管理</span>
-      </div>
+  <div class="grid">
+    <div class="col-6 md:col-3">
+      <RouterLink to="/playlists" class="square-card-link no-underline text-color">
+        <Card
+          class="h-full"
+          :pt="{ body: { class: 'h-full justify-content-center' } }"
+        >
+          <template #content>
+            <div class="flex flex-column align-items-center gap-3">
+              <span class="pi pi-list text-4xl text-color-secondary" />
+              <span>プレイリスト管理</span>
+            </div>
+          </template>
+        </Card>
+      </RouterLink>
+    </div>
+    <div class="col-6 md:col-3">
+      <RouterLink to="/media" class="square-card-link no-underline text-color">
+        <Card
+          class="h-full"
+          :pt="{ body: { class: 'h-full justify-content-center' } }"
+        >
+          <template #content>
+            <div class="flex flex-column align-items-center gap-3">
+              <span class="pi pi-images text-4xl text-color-secondary" />
+              <span>メディア管理</span>
+            </div>
+          </template>
+        </Card>
+      </RouterLink>
     </div>
   </div>
 </template>
 
 <style scoped>
-.home-view {
-  padding: 2rem;
-  max-width: 800px;
-  margin: 0 auto;
-}
-
-h1 {
-  font-size: 1.5rem;
-  margin-bottom: 2rem;
-}
-
-.menu {
-  display: flex;
-  gap: 1.5rem;
-}
-
-.menu-card {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 0.75rem;
-  padding: 2rem;
-  border: 1px solid #dee2e6;
-  border-radius: 8px;
-  cursor: pointer;
-  transition: background-color 0.15s;
-  width: 160px;
-}
-
-.menu-card:hover {
-  background-color: #f8f9fa;
-}
-
-.menu-card .pi {
-  font-size: 2rem;
-  color: #6c757d;
+.square-card-link {
+  display: block;
+  aspect-ratio: 1 / 1;
 }
 </style>

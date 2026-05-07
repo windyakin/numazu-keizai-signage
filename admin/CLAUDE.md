@@ -77,8 +77,29 @@ admin/
 ## PrimeVue v4
 
 - テーマプリセット: **Aura**（`@primeuix/themes/aura`）。`@primevue/themes` は deprecated のため使わない。
-- コンポーネントの import は自動登録済みのため `import Button from 'primevue/button'` のような明示 import は不要。
+- コンポーネントは使用するファイルで明示 import する（例: `import Button from 'primevue/button'`）。自動登録（unplugin-vue-components 等）は導入していない。
 - アイコンは `primeicons` を使う（`pi pi-*` クラス）。
+- v3 由来の API は使わない:
+  - DataTable の `responsiveLayout` は v4 で削除済み。スタック表示が必要なら `breakpoint` を使う。
+  - 行ドラッグ並び替えは `<Column rowReorder />` + `@rowReorder` イベントで実現する。`reorderableRows` プロップは v4 に存在しない。
+  - `useConfirm` の `acceptClass` / `acceptLabel` / `rejectLabel` は使わない。`acceptProps` / `rejectProps` にラベル・severity・outlined などをまとめる。
+
+### コンポーネント内部の見た目をいじりたいとき
+
+PrimeVue v4 の Pass Through (PT) を第一手段にする。`:deep(...)` セレクタや、コンポーネント内部の `.p-*` クラスを狙ったグローバル CSS は基本的に使わない。
+
+- PT は MCP の `mcp__primevue__get_component_pt` で各コンポーネントのパート名を確認できる（例: Menubar の `button` / `itemContent` / `submenu` 等）。
+- 静的なクラス／属性付与は属性記法が短い: `<Menubar pt:button:class="ml-auto">`。
+- 複数まとめるならオブジェクト記法: `:pt="{ button: { class: 'ml-auto' }, submenu: { class: '...' } }"`。
+- 動的に出し分けたいときは関数 PT が使える: `:pt="{ item: ({ context }) => ({ class: ... }) }"`。
+- スロット (`#item` 等) で自分が描画した要素は親コンポーネントの scoped CSS が普通に当たる。`:deep` は不要なのでまずスロット側で済むかを検討する。
+
+## レイアウト・ユーティリティ CSS
+
+- 余白・flex・サイズなどのユーティリティクラスは **PrimeFlex** を使う（[main.ts](src/main.ts) で `primeflex/primeflex.css` を import 済み）。
+- 主に使うクラス: `flex` / `flex-column` / `align-items-*` / `justify-content-*` / `gap-{1..6}` / `m{,t,r,b,l,x,y}-{0..6}` / `p{,t,r,b,l,x,y}-{0..6}` / `w-full` / `text-{xs,sm,base,lg,xl,2xl}` / `text-color-secondary` / `font-semibold` / `border-round` / `cursor-pointer` / `hidden` / `white-space-nowrap`。
+- 1 ファイル内で繰り返し出る独自レイアウトのみ `<style scoped>` に書く。`width`/`max-width`/`padding` のページレベルの寸法は scoped CSS、汎用 flex/gap/margin は PrimeFlex クラスで揃える方針。
+- 色は CSS 変数 `--p-*`（例: `var(--p-content-border-color)`）を使い、ハードコードした hex は避ける。
 
 ---
 

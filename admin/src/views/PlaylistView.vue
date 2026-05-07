@@ -8,8 +8,11 @@ import Checkbox from 'primevue/checkbox'
 import Column from 'primevue/column'
 import DataTable from 'primevue/datatable'
 import Dialog from 'primevue/dialog'
+import InputGroup from 'primevue/inputgroup'
+import InputGroupAddon from 'primevue/inputgroupaddon'
 import InputNumber from 'primevue/inputnumber'
 import Select from 'primevue/select'
+import Slider from 'primevue/slider'
 import Tag from 'primevue/tag'
 import ToggleSwitch from 'primevue/toggleswitch'
 import { usePlaylistStore } from '../stores/usePlaylistStore'
@@ -23,6 +26,11 @@ const playlistStore = usePlaylistStore()
 const mediaStore = useMediaStore()
 const confirm = useConfirm()
 const toast = useToast()
+
+const BASE_URL = import.meta.env.VITE_API_BASE_URL || '/api/admin'
+function mediaContentUrl(id: string) {
+  return `${BASE_URL}/media/${id}/content`
+}
 
 const playlistId = computed(() => route.params.id as string)
 
@@ -45,7 +53,6 @@ onMounted(async () => {
   await Promise.all([playlistStore.load(playlistId.value), mediaStore.load()])
 })
 
-// 並び替え保存
 async function saveOrder() {
   try {
     await playlistStore.reorder(playlistId.value, localItems.value.map((i) => i.id))
@@ -59,15 +66,13 @@ function onReorder(event: { value: typeof localItems.value }) {
   localItems.value = event.value
 }
 
-// 削除
 function confirmDelete(id: string, label: string) {
   confirm.require({
     message: `「${label}」を削除しますか？`,
     header: '削除の確認',
     icon: 'pi pi-exclamation-triangle',
-    acceptLabel: '削除',
-    rejectLabel: 'キャンセル',
-    acceptClass: 'p-button-danger',
+    rejectProps: { label: 'キャンセル', severity: 'secondary', outlined: true },
+    acceptProps: { label: '削除', severity: 'danger' },
     accept: async () => {
       try {
         await playlistStore.remove(playlistId.value, id)
@@ -79,7 +84,6 @@ function confirmDelete(id: string, label: string) {
   })
 }
 
-// アイテム追加ダイアログ
 const showDialog = ref(false)
 const newType = ref<PlaylistItemType>('ARTICLE_LATEST')
 const newDuration = ref<number>(8)
@@ -159,7 +163,6 @@ async function onToggleFullscreen(item: (typeof localItems.value)[0], value: boo
   }
 }
 
-// 表示ユーティリティ
 const typeLabel: Record<PlaylistItemType, string> = {
   ARTICLE_LATEST: '最新記事',
   ARTICLE_RANDOM: 'ランダム記事',
@@ -190,17 +193,17 @@ function durationLabel(item: (typeof localItems.value)[0]): string {
 
 <template>
   <div class="playlist-view">
-    <div class="header">
-      <div class="header-left">
+    <div class="flex align-items-center justify-content-between mb-4">
+      <div class="flex align-items-center gap-2">
         <Button
           icon="pi pi-arrow-left"
           text
           size="small"
           @click="router.push('/playlists')"
         />
-        <h1>プレイリスト編集</h1>
+        <h1 class="m-0 text-xl">プレイリスト編集</h1>
       </div>
-      <div class="header-actions">
+      <div class="flex gap-2">
         <Button
           label="順序を保存"
           icon="pi pi-save"
@@ -218,10 +221,8 @@ function durationLabel(item: (typeof localItems.value)[0]): string {
     <DataTable
       :value="localItems"
       :loading="playlistStore.loading"
-      reorderableRows
       stripedRows
-      responsiveLayout="scroll"
-      @row-reorder="onReorder"
+      @rowReorder="onReorder"
     >
       <template #empty>プレイリストが空です。アイテムを追加してください。</template>
 
@@ -231,14 +232,21 @@ function durationLabel(item: (typeof localItems.value)[0]): string {
         <template #body="{ index }">{{ index + 1 }}</template>
       </Column>
 
-      <Column header="種別" style="width: 10rem">
-        <template #body="{ data }: { data: PlaylistItem }">
-          <Tag :value="typeLabel[data.type]" :severity="typeSeverity[data.type]" />
-        </template>
-      </Column>
-
       <Column header="内容">
-        <template #body="{ data }">{{ itemLabel(data) }}</template>
+        <template #body="{ data }: { data: PlaylistItem }">
+          <div class="flex align-items-center gap-2">
+            <Tag :value="typeLabel[data.type]" :severity="typeSeverity[data.type]" />
+            <img
+              v-if="data.type === 'IMAGE' && data.mediaFile"
+              :src="mediaContentUrl(data.mediaFile.id)"
+              :alt="data.mediaFile.originalName"
+              class="border-round thumbnail"
+            />
+            <span v-else-if="data.type === 'VIDEO' && data.mediaFile">
+              {{ data.mediaFile.originalName }}
+            </span>
+          </div>
+        </template>
       </Column>
 
       <Column header="表示時間" style="width: 8rem">
@@ -252,7 +260,7 @@ function durationLabel(item: (typeof localItems.value)[0]): string {
             :model-value="data.isFullscreen"
             @update:model-value="onToggleFullscreen(data, $event)"
           />
-          <span v-else class="text-muted">—</span>
+          <span v-else class="text-color-secondary">—</span>
         </template>
       </Column>
 
@@ -269,11 +277,10 @@ function durationLabel(item: (typeof localItems.value)[0]): string {
       </Column>
     </DataTable>
 
-    <!-- アイテム追加ダイアログ -->
     <Dialog v-model:visible="showDialog" header="アイテムを追加" modal style="width: 28rem">
-      <div class="dialog-body">
-        <div class="field">
-          <label>種別</label>
+      <div class="flex flex-column gap-3 py-2">
+        <div class="flex flex-column gap-2">
+          <label class="font-semibold text-sm">種別</label>
           <Select
             v-model="newType"
             :options="typeOptions"
@@ -283,23 +290,34 @@ function durationLabel(item: (typeof localItems.value)[0]): string {
           />
         </div>
 
-        <div v-if="!isVideo" class="field">
-          <label>表示時間（秒）</label>
-          <InputNumber
-            v-model="newDuration"
-            :min="1"
-            :max="3600"
-            suffix="秒"
-            class="w-full"
-          />
+        <div v-if="!isVideo" class="flex flex-column gap-2">
+          <label class="font-semibold text-sm">表示時間</label>
+          <div class="flex align-items-center gap-3">
+            <Slider
+              v-model="newDuration"
+              :min="1"
+              :max="60"
+              :step="1"
+              class="duration-slider"
+            />
+            <InputGroup class="duration-input-group">
+              <InputNumber
+                v-model="newDuration"
+                :min="1"
+                :max="60"
+                :inputStyle="{ width: '3rem' }"
+              />
+              <InputGroupAddon>秒</InputGroupAddon>
+            </InputGroup>
+          </div>
         </div>
-        <div v-else class="field">
-          <label>表示時間</label>
-          <p class="natural-end">自然終了（動画の再生終了まで）</p>
+        <div v-else class="flex flex-column gap-2">
+          <label class="font-semibold text-sm">表示時間</label>
+          <p class="m-0 text-sm text-color-secondary">自然終了（動画の再生終了まで）</p>
         </div>
 
-        <div v-if="needsMedia" class="field">
-          <label>{{ isVideo ? '動画' : '画像' }}ファイル</label>
+        <div v-if="needsMedia" class="flex flex-column gap-2">
+          <label class="font-semibold text-sm">{{ isVideo ? '動画' : '画像' }}ファイル</label>
           <Select
             v-model="newMediaFileId"
             :options="mediaOptions"
@@ -313,9 +331,9 @@ function durationLabel(item: (typeof localItems.value)[0]): string {
           </small>
         </div>
 
-        <div v-if="needsMedia" class="field field-inline">
+        <div v-if="needsMedia" class="flex align-items-center gap-2">
           <Checkbox v-model="newIsFullscreen" inputId="newIsFullscreen" binary />
-          <label for="newIsFullscreen" class="inline-label">フルスクリーン表示（ヘッダーを隠す）</label>
+          <label for="newIsFullscreen" class="cursor-pointer">フルスクリーン表示（ヘッダーを隠す）</label>
         </div>
       </div>
 
@@ -328,79 +346,19 @@ function durationLabel(item: (typeof localItems.value)[0]): string {
 </template>
 
 <style scoped>
-.playlist-view {
-  padding: 2rem;
-  max-width: 1000px;
-  margin: 0 auto;
-}
-
-.header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin-bottom: 1.5rem;
-}
-
-.header-left {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-}
-
-.header h1 {
-  margin: 0;
-  font-size: 1.5rem;
-}
-
-.header-actions {
-  display: flex;
-  gap: 0.5rem;
-}
-
-.dialog-body {
-  display: flex;
-  flex-direction: column;
-  gap: 1rem;
-  padding: 0.5rem 0;
-}
-
-.field {
-  display: flex;
-  flex-direction: column;
-  gap: 0.4rem;
-}
-
-.field-inline {
-  flex-direction: row;
-  align-items: center;
-  gap: 0.6rem;
-}
-
-.field label {
-  font-weight: 600;
-  font-size: 0.875rem;
-}
-
-.inline-label {
-  font-weight: 400;
-  cursor: pointer;
-}
-
-.text-muted {
-  color: #6c757d;
-}
-
-.natural-end {
-  margin: 0;
-  color: #6c757d;
-  font-size: 0.875rem;
-}
-
 .no-media {
   color: #e17055;
 }
-
-.w-full {
-  width: 100%;
+.duration-slider {
+  flex: 1 1 0;
+  min-width: 0;
+}
+.duration-input-group {
+  width: auto;
+}
+.thumbnail {
+  width: 48px;
+  height: 48px;
+  object-fit: cover;
 }
 </style>
