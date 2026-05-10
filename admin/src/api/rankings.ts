@@ -6,6 +6,7 @@ export interface RankingItem {
   imageKey: string | null
   rank: number
   start: string
+  articleUrl: string | null
 }
 
 export interface RankingsData {

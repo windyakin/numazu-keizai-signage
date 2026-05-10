@@ -1,0 +1,16 @@
+/* admin パッケージ用の最小グローバル CSS。
+   色は定義しない (PrimeVue Aura の --p-* を使う)。 */
+
+:root {
+  --admin-sidebar-w: 240px;
+  --admin-topbar-h: 56px;
+  --admin-bottomnav-h: 64px;
+}
+
+.tabular-nums {
+  font-variant-numeric: tabular-nums;
+}
+
+.admin-safe-area-bottom {
+  padding-bottom: env(safe-area-inset-bottom);
+}

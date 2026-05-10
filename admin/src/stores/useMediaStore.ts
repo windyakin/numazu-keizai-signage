@@ -1,34 +1,46 @@
 import { defineStore } from 'pinia'
-import { ref } from 'vue'
-import { fetchMedia, uploadMedia, deleteMedia, type MediaFile } from '../api/media'
+import { reactive, ref } from 'vue'
+import {
+  fetchMedia,
+  uploadMedia,
+  deleteMedia,
+  type MediaFile,
+} from '../api/media'
 
-export interface UploadFailure {
-  file: File
-  error: unknown
-}
+const PAGE_SIZE = 50
 
-export interface UploadResult {
-  uploaded: number
-  failed: UploadFailure[]
+export interface MediaFilters {
+  q: string
+  type: 'IMAGE' | 'VIDEO' | null
 }
 
 export const useMediaStore = defineStore('media', () => {
   const files = ref<MediaFile[]>([])
+  const filters = reactive<MediaFilters>({ q: '', type: null })
+  const cursor = ref<string | null>(null)
+  const hasMore = ref(false)
   const loading = ref(false)
+  const loadingMore = ref(false)
   const uploading = ref(false)
   const error = ref<string | null>(null)
 
-  const uploadIndex = ref(0)
-  const uploadTotal = ref(0)
-  const uploadFileName = ref('')
-  const uploadLoaded = ref(0)
-  const uploadFileSize = ref(0)
+  function buildOpts(extra: { cursor?: string } = {}) {
+    return {
+      limit: PAGE_SIZE,
+      q: filters.q || undefined,
+      type: filters.type ?? undefined,
+      ...extra,
+    }
+  }
 
   async function load() {
     loading.value = true
     error.value = null
     try {
-      files.value = await fetchMedia()
+      const page = await fetchMedia(buildOpts())
+      files.value = page.files
+      cursor.value = page.nextCursor ?? null
+      hasMore.value = !!page.nextCursor
     } catch (e) {
       error.value = e instanceof Error ? e.message : 'Unknown error'
     } finally {
@@ -36,41 +48,37 @@ export const useMediaStore = defineStore('media', () => {
     }
   }
 
-  async function uploadAll(targets: File[]): Promise<UploadResult> {
-    if (uploading.value || targets.length === 0) {
-      return { uploaded: 0, failed: [] }
-    }
-    uploading.value = true
-    uploadTotal.value = targets.length
-    const failed: UploadFailure[] = []
-    let uploaded = 0
+  async function loadMore() {
+    if (!hasMore.value || loadingMore.value || !cursor.value) return
+    loadingMore.value = true
     try {
-      for (let i = 0; i < targets.length; i++) {
-        const file = targets[i]
-        uploadIndex.value = i
-        uploadFileName.value = file.name
-        uploadLoaded.value = 0
-        uploadFileSize.value = file.size
-        try {
-          const registered = await uploadMedia(file, ({ loaded, total }) => {
-            uploadLoaded.value = loaded
-            uploadFileSize.value = total
-          })
-          files.value = [registered, ...files.value]
-          uploaded++
-        } catch (e) {
-          failed.push({ file, error: e })
-        }
-      }
+      const page = await fetchMedia(buildOpts({ cursor: cursor.value }))
+      files.value = [...files.value, ...page.files]
+      cursor.value = page.nextCursor ?? null
+      hasMore.value = !!page.nextCursor
+    } catch (e) {
+      error.value = e instanceof Error ? e.message : 'Unknown error'
+    } finally {
+      loadingMore.value = false
+    }
+  }
+
+  function setFilters(patch: Partial<MediaFilters>) {
+    Object.assign(filters, patch)
+    return load()
+  }
+
+  async function uploadOne(file: File): Promise<MediaFile> {
+    uploading.value = true
+    try {
+      return await uploadMedia(file)
     } finally {
       uploading.value = false
-      uploadIndex.value = 0
-      uploadTotal.value = 0
-      uploadFileName.value = ''
-      uploadLoaded.value = 0
-      uploadFileSize.value = 0
     }
-    return { uploaded, failed }
+  }
+
+  function prependFile(media: MediaFile) {
+    files.value = [media, ...files.value]
   }
 
   async function remove(id: string) {
@@ -80,16 +88,18 @@ export const useMediaStore = defineStore('media', () => {
 
   return {
     files,
+    filters,
+    cursor,
+    hasMore,
     loading,
+    loadingMore,
     uploading,
     error,
-    uploadIndex,
-    uploadTotal,
-    uploadFileName,
-    uploadLoaded,
-    uploadFileSize,
     load,
-    uploadAll,
+    loadMore,
+    setFilters,
+    uploadOne,
+    prependFile,
     remove,
   }
 })

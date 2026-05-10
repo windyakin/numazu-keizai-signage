@@ -19,9 +19,34 @@ export interface UploadProgress {
   total: number
 }
 
-export async function fetchMedia(): Promise<MediaFile[]> {
-  const data = await apiFetch<{ files: MediaFile[] }>('/media')
-  return data.files
+export interface MediaPage {
+  files: MediaFile[]
+  total?: number
+  limit?: number
+  offset?: number
+  nextCursor?: string | null
+}
+
+export interface FetchMediaOptions {
+  limit?: number
+  offset?: number
+  cursor?: string
+  q?: string
+  type?: 'IMAGE' | 'VIDEO'
+}
+
+export async function fetchMedia(
+  opts: FetchMediaOptions = {},
+): Promise<MediaPage> {
+  const params = new URLSearchParams()
+  if (opts.limit !== undefined) params.set('limit', String(opts.limit))
+  if (opts.offset !== undefined) params.set('offset', String(opts.offset))
+  if (opts.cursor !== undefined) params.set('cursor', opts.cursor)
+  if (opts.q !== undefined && opts.q !== '') params.set('q', opts.q)
+  if (opts.type !== undefined) params.set('type', opts.type)
+  const query = params.toString()
+  const path = query ? `/media?${query}` : '/media'
+  return apiFetch<MediaPage>(path)
 }
 
 export function uploadMedia(

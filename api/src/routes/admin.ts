@@ -19,11 +19,44 @@ const ArticleSchema = z.object({
   imageKey: z.string().nullable(),
   description: z.string().nullable(),
   start: z.string(),
+  articleUrl: z.string().nullable(),
 });
+
+function buildArticleUrl(id: string): string | null {
+  const base = process.env.FEED_URL;
+  if (!base) return null;
+  return `${base.replace(/\/+$/, "")}/${id}/`;
+}
 
 const ArticlesResponseSchema = z.object({
   articles: z.array(ArticleSchema),
+  total: z.number().int().nonnegative().optional(),
+  limit: z.number().int().positive().optional(),
+  offset: z.number().int().nonnegative().optional(),
+  nextCursor: z.string().nullable().optional(),
 });
+
+const PaginationQuerySchema = z.object({
+  limit: z.coerce.number().int().min(1).max(100).optional(),
+  offset: z.coerce.number().int().min(0).optional(),
+  cursor: z.string().optional(),
+});
+
+const DEFAULT_PAGE_SIZE = 25;
+
+function encodeCursor(payload: object): string {
+  return Buffer.from(JSON.stringify(payload), "utf8").toString("base64url");
+}
+
+function decodeCursor<T>(cursor: string): T | null {
+  try {
+    return JSON.parse(
+      Buffer.from(cursor, "base64url").toString("utf8"),
+    ) as T;
+  } catch {
+    return null;
+  }
+}
 
 const RankingItemSchema = z.object({
   id: z.string(),
@@ -31,6 +64,7 @@ const RankingItemSchema = z.object({
   imageKey: z.string().nullable(),
   rank: z.number(),
   start: z.string(),
+  articleUrl: z.string().nullable(),
 });
 
 const RankingsResponseSchema = z.object({
@@ -62,6 +96,15 @@ const MediaFileSchema = z.object({
 
 const MediaListResponseSchema = z.object({
   files: z.array(MediaFileSchema),
+  total: z.number().int().nonnegative().optional(),
+  limit: z.number().int().positive().optional(),
+  offset: z.number().int().nonnegative().optional(),
+  nextCursor: z.string().nullable().optional(),
+});
+
+const MediaQuerySchema = PaginationQuerySchema.extend({
+  q: z.string().optional(),
+  type: z.enum(["IMAGE", "VIDEO"]).optional(),
 });
 
 // Playlist Schemas
@@ -123,6 +166,9 @@ const UpdatePlaylistItemRequestSchema = z.object({
 const getArticlesRoute = createRoute({
   method: "get",
   path: "/api/admin/articles",
+  request: {
+    query: PaginationQuerySchema,
+  },
   responses: {
     200: {
       content: { "application/json": { schema: ArticlesResponseSchema } },
@@ -175,6 +221,9 @@ const refreshRankingsRoute = createRoute({
 const getMediaRoute = createRoute({
   method: "get",
   path: "/api/admin/media",
+  request: {
+    query: MediaQuerySchema,
+  },
   responses: {
     200: {
       content: { "application/json": { schema: MediaListResponseSchema } },
@@ -366,20 +415,94 @@ const reorderPlaylistItemsRoute = createRoute({
 
 export const adminApp = new OpenAPIHono();
 
+type ArticleRow = {
+  id: string;
+  title: string;
+  description: string | null;
+  start: Date;
+  mediaFile: { storageKey: string } | null;
+};
+
+function serializeArticle(a: ArticleRow) {
+  return {
+    id: a.id,
+    title: a.title,
+    imageKey: a.mediaFile?.storageKey ?? null,
+    description: a.description,
+    start: a.start.toISOString(),
+    articleUrl: buildArticleUrl(a.id),
+  };
+}
+
+const articleOrderBy = [
+  { start: "desc" as const },
+  { id: "desc" as const },
+];
+
 adminApp.openapi(getArticlesRoute, async (c) => {
-  const articles = await prisma.article.findMany({
-    orderBy: { start: "desc" },
+  const { limit: rawLimit, offset, cursor } = c.req.valid("query");
+
+  // 無指定: 先頭25件のみ（旧形 { articles } で返す）
+  if (rawLimit === undefined && offset === undefined && cursor === undefined) {
+    const articles = await prisma.article.findMany({
+      take: DEFAULT_PAGE_SIZE,
+      orderBy: articleOrderBy,
+      include: { mediaFile: true },
+    });
+    return c.json({ articles: articles.map(serializeArticle) });
+  }
+
+  const limit = rawLimit ?? DEFAULT_PAGE_SIZE;
+
+  // offset 優先（cursor は無視）
+  if (offset !== undefined) {
+    const [articles, total] = await prisma.$transaction([
+      prisma.article.findMany({
+        take: limit,
+        skip: offset,
+        orderBy: articleOrderBy,
+        include: { mediaFile: true },
+      }),
+      prisma.article.count(),
+    ]);
+    return c.json({
+      articles: articles.map(serializeArticle),
+      total,
+      limit,
+      offset,
+    });
+  }
+
+  // cursor モード（先頭ページは cursor 省略可）
+  let where = {};
+  if (cursor) {
+    const decoded = decodeCursor<{ s: string; id: string }>(cursor);
+    if (decoded) {
+      where = {
+        OR: [
+          { start: { lt: new Date(decoded.s) } },
+          { start: new Date(decoded.s), id: { lt: decoded.id } },
+        ],
+      };
+    }
+  }
+  const fetched = await prisma.article.findMany({
+    take: limit + 1,
+    where,
+    orderBy: articleOrderBy,
     include: { mediaFile: true },
   });
-
+  const hasMore = fetched.length > limit;
+  const items = hasMore ? fetched.slice(0, limit) : fetched;
+  const last = items[items.length - 1];
+  const nextCursor =
+    hasMore && last
+      ? encodeCursor({ s: last.start.toISOString(), id: last.id })
+      : null;
   return c.json({
-    articles: articles.map((a) => ({
-      id: a.id,
-      title: a.title,
-      imageKey: a.mediaFile?.storageKey ?? null,
-      description: a.description,
-      start: a.start.toISOString(),
-    })),
+    articles: items.map(serializeArticle),
+    nextCursor,
+    limit,
   });
 });
 
@@ -399,6 +522,7 @@ adminApp.openapi(getRankingsRoute, async (c) => {
       imageKey: r.article.mediaFile?.storageKey ?? null,
       rank: r.rank,
       start: r.article.start.toISOString(),
+      articleUrl: buildArticleUrl(r.articleId),
     })),
     fetchedAt,
   });
@@ -426,25 +550,118 @@ adminApp.openapi(refreshRankingsRoute, async (c) => {
 
 // Media handlers
 
+type MediaRow = {
+  id: string;
+  storageKey: string;
+  mimeType: string;
+  type: "IMAGE" | "VIDEO" | "ARTICLE";
+  originalName: string;
+  sizeBytes: bigint | null;
+  uploadedAt: Date;
+  _count: { playlistItems: number };
+};
+
+function serializeMedia(f: MediaRow) {
+  return {
+    id: f.id,
+    storageKey: f.storageKey,
+    url: getPublicUrl(f.storageKey),
+    mimeType: f.mimeType,
+    type: f.type,
+    originalName: f.originalName,
+    sizeBytes: f.sizeBytes?.toString() ?? null,
+    uploadedAt: f.uploadedAt.toISOString(),
+    playlistItemCount: f._count.playlistItems,
+  };
+}
+
+const mediaOrderBy = [
+  { uploadedAt: "desc" as const },
+  { id: "desc" as const },
+];
+
 adminApp.openapi(getMediaRoute, async (c) => {
-  const files = await prisma.mediaFile.findMany({
-    where: { type: { in: ["IMAGE", "VIDEO"] } },
-    orderBy: { uploadedAt: "desc" },
+  const { limit: rawLimit, offset, cursor, q, type } = c.req.valid("query");
+
+  const baseWhere: {
+    type: { in: ("IMAGE" | "VIDEO")[] } | "IMAGE" | "VIDEO";
+    originalName?: { contains: string; mode: "insensitive" };
+  } = {
+    type: type ?? { in: ["IMAGE", "VIDEO"] },
+  };
+  const trimmedQ = q?.trim();
+  if (trimmedQ) {
+    baseWhere.originalName = { contains: trimmedQ, mode: "insensitive" };
+  }
+
+  // 無指定: 先頭25件のみ
+  if (rawLimit === undefined && offset === undefined && cursor === undefined) {
+    const files = await prisma.mediaFile.findMany({
+      where: baseWhere,
+      take: DEFAULT_PAGE_SIZE,
+      orderBy: mediaOrderBy,
+      include: { _count: { select: { playlistItems: true } } },
+    });
+    return c.json({ files: files.map(serializeMedia) });
+  }
+
+  const limit = rawLimit ?? DEFAULT_PAGE_SIZE;
+
+  // offset 優先（cursor は無視）
+  if (offset !== undefined) {
+    const [files, total] = await prisma.$transaction([
+      prisma.mediaFile.findMany({
+        where: baseWhere,
+        take: limit,
+        skip: offset,
+        orderBy: mediaOrderBy,
+        include: { _count: { select: { playlistItems: true } } },
+      }),
+      prisma.mediaFile.count({ where: baseWhere }),
+    ]);
+    return c.json({
+      files: files.map(serializeMedia),
+      total,
+      limit,
+      offset,
+    });
+  }
+
+  // cursor モード
+  let where: object = baseWhere;
+  if (cursor) {
+    const decoded = decodeCursor<{ u: string; id: string }>(cursor);
+    if (decoded) {
+      where = {
+        AND: [
+          baseWhere,
+          {
+            OR: [
+              { uploadedAt: { lt: new Date(decoded.u) } },
+              { uploadedAt: new Date(decoded.u), id: { lt: decoded.id } },
+            ],
+          },
+        ],
+      };
+    }
+  }
+  const fetched = await prisma.mediaFile.findMany({
+    where,
+    take: limit + 1,
+    orderBy: mediaOrderBy,
     include: { _count: { select: { playlistItems: true } } },
   });
-
+  const hasMore = fetched.length > limit;
+  const items = hasMore ? fetched.slice(0, limit) : fetched;
+  const last = items[items.length - 1];
+  const nextCursor =
+    hasMore && last
+      ? encodeCursor({ u: last.uploadedAt.toISOString(), id: last.id })
+      : null;
   return c.json({
-    files: files.map((f) => ({
-      id: f.id,
-      storageKey: f.storageKey,
-      url: getPublicUrl(f.storageKey),
-      mimeType: f.mimeType,
-      type: f.type,
-      originalName: f.originalName,
-      sizeBytes: f.sizeBytes?.toString() ?? null,
-      uploadedAt: f.uploadedAt.toISOString(),
-      playlistItemCount: f._count.playlistItems,
-    })),
+    files: items.map(serializeMedia),
+    nextCursor,
+    limit,
   });
 });
 

@@ -11,9 +11,17 @@ import {
   type UpdatePlaylistItemBody,
 } from '../api/playlist'
 
+export interface SavePlan {
+  deletes: string[]
+  patches: { id: string; patch: UpdatePlaylistItemBody }[]
+  creates: { tempId: string; body: CreatePlaylistItemBody }[]
+  finalOrder: string[]
+}
+
 export const usePlaylistStore = defineStore('playlist', () => {
   const items = ref<PlaylistItem[]>([])
   const loading = ref(false)
+  const saving = ref(false)
   const error = ref<string | null>(null)
 
   async function load(playlistId: string) {
@@ -28,29 +36,34 @@ export const usePlaylistStore = defineStore('playlist', () => {
     }
   }
 
-  async function add(playlistId: string, body: CreatePlaylistItemBody) {
-    const item = await addPlaylistItem(playlistId, body)
-    items.value = [...items.value, item]
-  }
-
-  async function update(playlistId: string, itemId: string, patch: UpdatePlaylistItemBody) {
-    const item = await updatePlaylistItem(playlistId, itemId, patch)
-    const idx = items.value.findIndex((i) => i.id === itemId)
-    if (idx !== -1) {
-      const next = [...items.value]
-      next[idx] = item
-      items.value = next
+  async function saveAll(playlistId: string, plan: SavePlan) {
+    saving.value = true
+    try {
+      for (const id of plan.deletes) {
+        await deletePlaylistItem(playlistId, id)
+      }
+      for (const { id, patch } of plan.patches) {
+        await updatePlaylistItem(playlistId, id, patch)
+      }
+      const tempIdToReal = new Map<string, string>()
+      for (const { tempId, body } of plan.creates) {
+        const created = await addPlaylistItem(playlistId, body)
+        tempIdToReal.set(tempId, created.id)
+      }
+      const resolvedOrder = plan.finalOrder.map((id) => tempIdToReal.get(id) ?? id)
+      const needsReorder =
+        plan.deletes.length > 0 ||
+        plan.creates.length > 0 ||
+        resolvedOrder.some((id, i) => items.value[i]?.id !== id)
+      if (needsReorder) {
+        items.value = await reorderPlaylist(playlistId, resolvedOrder)
+      } else {
+        items.value = await fetchPlaylistItems(playlistId)
+      }
+    } finally {
+      saving.value = false
     }
   }
 
-  async function remove(playlistId: string, itemId: string) {
-    await deletePlaylistItem(playlistId, itemId)
-    items.value = items.value.filter((i) => i.id !== itemId)
-  }
-
-  async function reorder(playlistId: string, ids: string[]) {
-    items.value = await reorderPlaylist(playlistId, ids)
-  }
-
-  return { items, loading, error, load, add, update, remove, reorder }
+  return { items, loading, saving, error, load, saveAll }
 })
