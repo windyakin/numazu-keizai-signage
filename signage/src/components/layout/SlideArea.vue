@@ -2,6 +2,7 @@
 import { ref, computed, onMounted, onUnmounted } from "vue";
 import {
   fetchPlaylist,
+  reportPlayback,
   type PlaylistItem,
   type MediaPayload,
 } from "../../api/playlist";
@@ -29,14 +30,21 @@ const debugFixed = ref(false);
 let slideTimer: ReturnType<typeof setTimeout> | null = null;
 let refreshTimer: ReturnType<typeof setInterval> | null = null;
 let emptyRetryTimer: ReturnType<typeof setInterval> | null = null;
+let errorRetryTimer: ReturnType<typeof setTimeout> | null = null;
 let pendingPlaylist: PlaylistItem[] | null = null;
+let pendingPlaylistId: string | null = null;
+let currentPlaylistId: string | null = null;
 let fetchingPlaylist = false;
+let consecutiveErrors = 0;
+const allSlidesError = ref(false);
 
 const refreshIntervalMin = parseInt(
   import.meta.env.VITE_PLAYLIST_REFRESH_INTERVAL_MIN || "10",
   10
 );
 const EMPTY_RETRY_SEC = 30;
+const ERROR_THRESHOLD = 5;
+const ERROR_RETRY_SEC = 30;
 
 // Current item
 const currentItem = computed(() => playlistItems.value[currentIndex.value] ?? null);
@@ -68,7 +76,7 @@ function scheduleNext(seconds: number): void {
   slideTimer = setTimeout(advance, seconds * 1000);
 }
 
-function advance(): void {
+function moveToNext(): void {
   if (debugFixed.value) return;
   const len = playlistItems.value.length;
   if (len === 0) return;
@@ -81,17 +89,22 @@ function advance(): void {
     if (pendingPlaylist !== null && pendingPlaylist.length > 0) {
       playlistItems.value = pendingPlaylist;
       pendingPlaylist = null;
+      currentPlaylistId = pendingPlaylistId;
+      pendingPlaylistId = null;
       const first = findNextValidIndex(0);
       if (first === null) return;
       goTo(first);
+      reportNow(false);
     } else {
       goTo(next);
+      reportNow(true);
     }
     void fetchNextPlaylist();
     return;
   }
 
   goTo(next);
+  reportNow(false);
 }
 
 function goTo(index: number): void {
@@ -109,8 +122,42 @@ function goTo(index: number): void {
   }
 }
 
+function reportNow(looped: boolean): void {
+  if (!currentPlaylistId) return;
+  const item = currentItem.value;
+  if (!item) return;
+  void reportPlayback({
+    playlistId: currentPlaylistId,
+    currentItemId: item.id,
+    looped,
+  });
+}
+
+function advance(): void {
+  consecutiveErrors = 0;
+  moveToNext();
+}
+
 function onVideoEnded(): void {
   advance();
+}
+
+function onSlideError(): void {
+  consecutiveErrors++;
+  if (consecutiveErrors >= ERROR_THRESHOLD) {
+    allSlidesError.value = true;
+    if (slideTimer) clearTimeout(slideTimer);
+    slideTimer = null;
+    if (errorRetryTimer) clearTimeout(errorRetryTimer);
+    errorRetryTimer = setTimeout(() => {
+      consecutiveErrors = 0;
+      allSlidesError.value = false;
+      errorRetryTimer = null;
+      moveToNext();
+    }, ERROR_RETRY_SEC * 1000);
+    return;
+  }
+  moveToNext();
 }
 
 // Resolved payload accessors
@@ -138,6 +185,7 @@ const currentMedia = computed<MediaPayload | null>(() => {
 async function loadInitial(): Promise<void> {
   const [data, fetchedArticles, fetchedRankings] = await Promise.all([fetchPlaylist(), fetchArticles(), fetchRankings()]);
   playlistItems.value = data.items;
+  currentPlaylistId = data.id || null;
   articles.value = fetchedArticles;
   rankingsData.value = fetchedRankings;
   if (currentIndex.value >= data.items.length && data.items.length > 0) {
@@ -152,6 +200,7 @@ async function fetchNextPlaylist(): Promise<void> {
     const data = await fetchPlaylist();
     if (data.items.length > 0) {
       pendingPlaylist = data.items;
+      pendingPlaylistId = data.id || null;
     }
   } catch {
     // silently ignore - keep current playlist
@@ -177,7 +226,10 @@ async function retryWhenEmpty(): Promise<void> {
     if (playlistItems.value.length > 0) {
       error.value = null;
       const first = findNextValidIndex(0);
-      if (first !== null) goTo(first);
+      if (first !== null) {
+        goTo(first);
+        reportNow(false);
+      }
     }
   } catch {
     // silently ignore - retry on next tick
@@ -212,7 +264,10 @@ onMounted(async () => {
       if (item?.type === "ARTICLE_RANDOM") randomArticle.value = pickRandom();
     } else {
       const first = findNextValidIndex(0);
-      if (first !== null) goTo(first);
+      if (first !== null) {
+        goTo(first);
+        reportNow(false);
+      }
     }
   } catch (e) {
     error.value = e instanceof Error ? e.message : "Unknown error";
@@ -228,6 +283,7 @@ onUnmounted(() => {
   if (slideTimer) clearTimeout(slideTimer);
   if (refreshTimer) clearInterval(refreshTimer);
   if (emptyRetryTimer) clearInterval(emptyRetryTimer);
+  if (errorRetryTimer) clearTimeout(errorRetryTimer);
 });
 </script>
 
@@ -235,6 +291,12 @@ onUnmounted(() => {
   <div class="slide-area">
     <div v-if="loading" class="slide-area__loading">Loading...</div>
     <div v-else-if="error" class="slide-area__error">{{ error }}</div>
+    <div
+      v-else-if="allSlidesError"
+      class="slide-area__error"
+    >
+      コンテンツの読み込みに失敗しました
+    </div>
     <template v-else-if="playlistItems.length > 0 && currentItem">
       <Transition name="slide" mode="out-in">
         <NewsArticleSlide
@@ -246,6 +308,7 @@ onUnmounted(() => {
           :key="`article-${currentItem.id}-${currentArticle.id}`"
           :article="currentArticle"
           :index="currentIndex"
+          @error="onSlideError"
         />
         <RankingSlide
           v-else-if="currentItem.type === 'RANKING' && currentRanking"
@@ -257,6 +320,7 @@ onUnmounted(() => {
           v-else-if="currentItem.type === 'IMAGE' && currentMedia"
           :key="`image-${currentItem.id}`"
           :url="currentMedia.url"
+          @error="onSlideError"
         />
         <VideoSlide
           v-else-if="currentItem.type === 'VIDEO' && currentMedia"
@@ -264,6 +328,7 @@ onUnmounted(() => {
           :url="currentMedia.url"
           :mime-type="currentMedia.mimeType"
           @ended="onVideoEnded"
+          @error="onSlideError"
         />
       </Transition>
     </template>

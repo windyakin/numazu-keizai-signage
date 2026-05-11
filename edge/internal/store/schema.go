@@ -26,8 +26,17 @@ CREATE TABLE IF NOT EXISTS rankings (
   fetched_at DATETIME NOT NULL
 );
 
+CREATE TABLE IF NOT EXISTS playlists (
+  id          TEXT PRIMARY KEY,
+  is_active   INTEGER  NOT NULL DEFAULT 0,
+  play_count  INTEGER  NOT NULL DEFAULT 0,
+  fetched_at  DATETIME NOT NULL,
+  reported_at DATETIME
+);
+
 CREATE TABLE IF NOT EXISTS playlist_items (
   id TEXT PRIMARY KEY,
+  playlist_id TEXT NOT NULL DEFAULT '',
   type TEXT NOT NULL,
   item_order INTEGER NOT NULL,
   duration_sec INTEGER,
@@ -36,6 +45,8 @@ CREATE TABLE IF NOT EXISTS playlist_items (
   is_fullscreen INTEGER NOT NULL DEFAULT 0,
   fetched_at DATETIME NOT NULL
 );
+
+CREATE INDEX IF NOT EXISTS idx_playlist_items_playlist ON playlist_items(playlist_id);
 
 -- 上流 api の MediaFile (S3 オブジェクト) ローカルキャッシュ。
 -- articles / rankings / playlist_items 全てから参照される単一の物理メディア追跡テーブル。
@@ -71,6 +82,7 @@ func Open(dbPath string) (*sql.DB, error) {
 func migrate(db *sql.DB) error {
 	stmts := []string{
 		`ALTER TABLE playlist_items ADD COLUMN is_fullscreen INTEGER NOT NULL DEFAULT 0`,
+		`ALTER TABLE playlist_items ADD COLUMN playlist_id TEXT NOT NULL DEFAULT ''`,
 	}
 	for _, stmt := range stmts {
 		if _, err := db.Exec(stmt); err != nil {

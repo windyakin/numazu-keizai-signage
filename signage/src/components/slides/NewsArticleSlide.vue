@@ -7,6 +7,8 @@ const props = defineProps<{
   index: number;
 }>();
 
+const emit = defineEmits<{ error: [] }>();
+
 const isSwapped = computed(() => props.index % 2 === 1);
 
 const formattedDate = computed(() => {
@@ -26,6 +28,7 @@ const formattedDate = computed(() => {
         :src="article.imageUrl"
         :alt="article.title"
         class="news-slide__image"
+        @error="emit('error')"
       />
     </div>
     <div class="news-slide__info-pane">

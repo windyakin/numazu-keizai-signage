@@ -3,11 +3,18 @@ defineProps<{
   url: string;
   alt?: string;
 }>();
+
+const emit = defineEmits<{ error: [] }>();
 </script>
 
 <template>
   <div class="image-slide">
-    <img :src="url" :alt="alt ?? ''" class="image-slide__img" />
+    <img
+      :src="url"
+      :alt="alt ?? ''"
+      class="image-slide__img"
+      @error="emit('error')"
+    />
   </div>
 </template>
 

@@ -42,10 +42,12 @@ internal/model/model.go          Article / Ranking / Response 型定義
 internal/server/server.go        chi ルーター・CORS ミドルウェア
 internal/server/articles.go      GET /api/signage/articles ハンドラ
 internal/server/rankings.go      GET /api/signage/rankings ハンドラ
+internal/server/playback.go      POST /api/signage/playback ハンドラ（signage 再生状況の受信）
 internal/store/schema.go         SQLite open・スキーマ初期化（WAL モード）
 internal/store/articles.go       articles テーブル操作（Sync / List / ListReady）。List 系は最新 15 件 cap
 internal/store/rankings.go       rankings テーブル操作（Replace / List / ListReady）
-internal/store/playlist.go       playlist_items テーブル操作（Replace / List）
+internal/store/playlists.go      playlists テーブル操作（Upsert / MarkActive / IncrementPlayCount / Cleanup / HasReported / Latest / List）
+internal/store/playlist.go       playlist_items テーブル操作（Replace(playlistId, ...) / List(playlistId)）
 internal/store/media.go          media_cache テーブル操作（Enqueue / MarkReady / MarkFailed / LocalPath / ListOrphans / Delete）
 internal/sync/client.go          upstream HTTP クライアント（getJSON）
 internal/sync/articles.go        ArticlesSyncer（記事 pull → articles ID 差分同期 → メディア enqueue → media sweep）
@@ -61,11 +63,14 @@ internal/sync/media.go           MediaSyncer（記事画像 / ランキング画
 ```sql
 articles       (id PK, title, storage_key, description, start, fetched_at)
 rankings       (id PK, title, storage_key, rank, start, fetched_at)
-playlist_items (id PK, type, item_order, duration_sec, storage_key, mime_type, fetched_at)
+playlists      (id PK, is_active, play_count, fetched_at, reported_at)
+playlist_items (id PK, playlist_id FK, type, item_order, duration_sec, storage_key, mime_type, is_fullscreen, fetched_at)
 media_cache    (storage_key PK, local_path, mime_type, status, retries, downloaded_at)
 ```
 
 `storage_key` は上流 api が返す `MediaFile.storageKey`（例: `articles/2382.jpg` / `uploads/<uuid>.jpg`）。`media_cache` は記事画像・ランキング画像・スライドメディアの全てを単一テーブルで追跡し、`articles.storage_key` / `rankings.storage_key` / `playlist_items.storage_key` の各参照は `media_cache.storage_key` を指す。`media_cache.status` は `pending` / `ready` / `failed` の 3 値。
+
+`playlists` は edge ローカルでの「signage が今どのプレイリストを再生中か」を追跡するためのテーブル（上流 api の `Playlist` モデルとは別物・同期しない）。`is_active` は signage の `POST /api/signage/playback` 報告で 1/0 が切り替わり、`play_count` は wrap-around を検知した signage が `looped=true` を送るたびに +1 される。`reported_at` は最後に signage 報告を受けた時刻で、`MediaSyncer.Sweep` は **どの行も `reported_at` が NULL の場合は実行しない**（signage 起動前の誤削除を防ぐ）。`playlists.Cleanup` は「`is_active=1`」と「最新 fetch」のいずれにも当てはまらない行を `playlist_items` ごと削除する。
 
 ---
 
@@ -91,7 +96,7 @@ media_cache    (storage_key PK, local_path, mime_type, status, retries, download
 - 書き込みは `.tmp` → rename のアトミック操作
 - 最大リトライ回数: 3（`MediaFailed` 状態で retries < 3 なら再試行）
 - 並列ワーカー数: 4
-- **Sweep（孤児削除）**: `MediaSyncer.Sweep` は articles / rankings / playlist_items のいずれからも参照されなくなった `media_cache` 行と `<MEDIA_DIR>/...` の実ファイルを削除する。各 syncer (articles / rankings / playlist) の `once()` 末尾で呼び出し、参照テーブルが更新された直後に共通でクリーンアップが走る形にしている。
+- **Sweep（孤児削除）**: `MediaSyncer.Sweep` は articles / rankings / playlist_items のいずれからも参照されなくなった `media_cache` 行と `<MEDIA_DIR>/...` の実ファイルを削除する。各 syncer (articles / rankings / playlist) の `once()` 末尾で呼び出し、参照テーブルが更新された直後に共通でクリーンアップが走る形にしている。`playlist_items` は `playlists` テーブルに存在する複数の playlist 行（=最新 fetch + signage が再生中の旧 playlist）を横断して保持されるため、signage が新プレイリストにスワップして `POST /api/signage/playback` を送るまで旧プレイリスト固有のメディアは削除されない。さらに **signage がまだ一度も `POST /api/signage/playback` を送っていない場合 (`HasReported() == false`) は Sweep を no-op にして抑止する**。
 
 ## articles の同期（ArticlesSyncer）
 
@@ -120,7 +125,8 @@ signage 側の API クライアント型 (`signage/src/api/articles.ts`, `rankin
 | GET | `/health` | ヘルスチェック (`{"status":"ok"}`) |
 | GET | `/api/signage/articles` | キャッシュ済み記事一覧（ready のみ） |
 | GET | `/api/signage/rankings` | キャッシュ済みランキング（ready のみ） |
-| GET | `/api/signage/playlist` | キャッシュ済みプレイリスト |
+| GET | `/api/signage/playlist` | キャッシュ済みプレイリスト（最新 fetch を `{id, items}` で返す） |
+| POST | `/api/signage/playback` | signage の現在再生状況を受信 (`{playlistId, currentItemId, looped}`)。`is_active` 切替・`play_count++`・古い playlist の解放を行う |
 | POST | `/api/signage/refresh` | 上流 fetch を即時実行 |
 | GET | `/media/*` | キャッシュ済み画像の HTTP 配信 |
 | GET | `/poc/echo` | リクエストヘッダのエコーバック（PoC 用） |

@@ -76,6 +76,7 @@ const PlaylistItemSchema = z.discriminatedUnion("type", [
 ]);
 
 const PlaylistResponseSchema = z.object({
+  id: z.string(),
   items: z.array(PlaylistItemSchema),
 });
 
@@ -174,7 +175,7 @@ signageApp.openapi(getPlaylistRoute, async (c) => {
       { id: "__fb_ar_5", type: "ARTICLE_RANDOM" as const, order: 5, durationSec: 8, payload: null },
       { id: "__fb_rk",   type: "RANKING"        as const, order: 6, durationSec: 16, payload: null },
     ];
-    return c.json({ items: fallback });
+    return c.json({ id: "__fb_default", items: fallback });
   }
 
   const items = playlist.items.map((item) => {
@@ -206,7 +207,7 @@ signageApp.openapi(getPlaylistRoute, async (c) => {
     }
   });
 
-  return c.json({ items });
+  return c.json({ id: playlist.id, items });
 });
 
 // Media proxy

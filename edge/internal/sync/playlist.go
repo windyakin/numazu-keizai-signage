@@ -12,23 +12,26 @@ import (
 )
 
 type PlaylistSyncer struct {
-	up       *upstream
-	items    *store.PlaylistItems
-	media    *MediaSyncer
-	interval time.Duration
+	up        *upstream
+	playlists *store.Playlists
+	items     *store.PlaylistItems
+	media     *MediaSyncer
+	interval  time.Duration
 }
 
 func NewPlaylistSyncer(
 	baseURL string,
+	playlists *store.Playlists,
 	items *store.PlaylistItems,
 	media *MediaSyncer,
 	interval time.Duration,
 ) *PlaylistSyncer {
 	return &PlaylistSyncer{
-		up:       newUpstream(baseURL),
-		items:    items,
-		media:    media,
-		interval: interval,
+		up:        newUpstream(baseURL),
+		playlists: playlists,
+		items:     items,
+		media:     media,
+		interval:  interval,
 	}
 }
 
@@ -62,6 +65,9 @@ func (p *PlaylistSyncer) once(ctx context.Context) error {
 	if err := p.up.getJSON(ctx, "/api/signage/playlist", &res); err != nil {
 		return err
 	}
+	if res.ID == "" {
+		return fmt.Errorf("upstream playlist response missing id")
+	}
 
 	now := time.Now().UTC()
 	items := make([]model.PlaylistItem, 0, len(res.Items))
@@ -86,7 +92,10 @@ func (p *PlaylistSyncer) once(ctx context.Context) error {
 		items = append(items, item)
 	}
 
-	if err := p.items.Replace(ctx, items, now); err != nil {
+	if err := p.playlists.Upsert(ctx, res.ID, now); err != nil {
+		return fmt.Errorf("upsert playlist %s: %w", res.ID, err)
+	}
+	if err := p.items.Replace(ctx, res.ID, items, now); err != nil {
 		return fmt.Errorf("replace playlist items: %w", err)
 	}
 
@@ -102,10 +111,16 @@ func (p *PlaylistSyncer) once(ctx context.Context) error {
 		}
 	}
 
+	cleaned, err := p.playlists.Cleanup(ctx)
+	if err != nil {
+		log.Printf("playlist sync: cleanup: %v", err)
+	}
+
 	swept, err := p.media.Sweep(ctx)
 	if err != nil {
 		log.Printf("playlist sync: sweep: %v", err)
 	}
-	log.Printf("playlist sync: %d items replaced, %d media swept", len(items), swept)
+	log.Printf("playlist sync: id=%s, %d items replaced, %d playlists cleaned, %d media swept",
+		res.ID, len(items), cleaned, swept)
 	return nil
 }

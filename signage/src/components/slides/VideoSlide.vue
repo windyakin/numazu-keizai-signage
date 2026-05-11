@@ -4,7 +4,7 @@ defineProps<{
   mimeType?: string;
 }>();
 
-const emit = defineEmits<{ ended: [] }>();
+const emit = defineEmits<{ ended: []; error: [] }>();
 </script>
 
 <template>
@@ -16,6 +16,7 @@ const emit = defineEmits<{ ended: [] }>();
       disableremoteplayback
       class="video-slide__video"
       @ended="emit('ended')"
+      @error="emit('error')"
     />
   </div>
 </template>

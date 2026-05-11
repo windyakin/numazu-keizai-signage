@@ -26,6 +26,7 @@ type PlaylistItem struct {
 
 // UpstreamPlaylistResponse is the JSON structure returned by the upstream API.
 type UpstreamPlaylistResponse struct {
+	ID    string                 `json:"id"`
 	Items []UpstreamPlaylistItem `json:"items"`
 }
 

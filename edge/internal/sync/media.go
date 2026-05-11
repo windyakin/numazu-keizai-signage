@@ -29,6 +29,7 @@ const (
 
 type MediaSyncer struct {
 	media          *store.Media
+	playlists      *store.Playlists
 	mediaDir       string
 	interval       time.Duration
 	client         *http.Client
@@ -36,9 +37,10 @@ type MediaSyncer struct {
 	upstreamAPIURL string
 }
 
-func NewMediaSyncer(media *store.Media, mediaDir string, interval time.Duration, upstreamAPIURL string) *MediaSyncer {
+func NewMediaSyncer(media *store.Media, playlists *store.Playlists, mediaDir string, interval time.Duration, upstreamAPIURL string) *MediaSyncer {
 	return &MediaSyncer{
 		media:          media,
+		playlists:      playlists,
 		mediaDir:       mediaDir,
 		interval:       interval,
 		client:         &http.Client{Timeout: 60 * time.Second},
@@ -194,7 +196,21 @@ func (m *MediaSyncer) fetch(ctx context.Context, storageKey, mimeType string) (s
 // longer referenced by any of articles / rankings / playlist_items. Returns
 // the number of entries actually removed. Best-effort: filesystem and DB
 // errors per entry are logged and the loop continues.
+//
+// As long as signage has not yet reported its current playback (HasReported
+// == false), Sweep is suppressed entirely so that media for the playlist
+// signage is presumably about to render is not deleted before signage can
+// claim it.
 func (m *MediaSyncer) Sweep(ctx context.Context) (int, error) {
+	reported, err := m.playlists.HasReported(ctx)
+	if err != nil {
+		return 0, err
+	}
+	if !reported {
+		log.Printf("media sweep: suppressed (signage has not reported playback yet)")
+		return 0, nil
+	}
+
 	orphans, err := m.media.ListOrphans(ctx)
 	if err != nil {
 		return 0, err

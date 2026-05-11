@@ -1,7 +1,9 @@
 package server
 
 import (
+	"database/sql"
 	"encoding/json"
+	"errors"
 	"log"
 	"net/http"
 
@@ -23,13 +25,26 @@ type mediaPayloadDTO struct {
 }
 
 type playlistResponseDTO struct {
+	ID    string            `json:"id"`
 	Items []playlistItemDTO `json:"items"`
 }
 
 func (s *Server) handleGetPlaylist(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
-	playlistItems, err := s.playlistItems.List(ctx)
+	latest, err := s.playlists.Latest(ctx)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			w.Header().Set("Content-Type", "application/json")
+			_ = json.NewEncoder(w).Encode(playlistResponseDTO{ID: "", Items: []playlistItemDTO{}})
+			return
+		}
+		log.Printf("playlist latest: %v", err)
+		http.Error(w, `{"error":"internal error"}`, http.StatusInternalServerError)
+		return
+	}
+
+	playlistItems, err := s.playlistItems.List(ctx, latest.ID)
 	if err != nil {
 		log.Printf("playlist list: %v", err)
 		http.Error(w, `{"error":"internal error"}`, http.StatusInternalServerError)
@@ -72,7 +87,7 @@ func (s *Server) handleGetPlaylist(w http.ResponseWriter, r *http.Request) {
 		items = append(items, dto)
 	}
 
-	res := playlistResponseDTO{Items: items}
+	res := playlistResponseDTO{ID: latest.ID, Items: items}
 
 	w.Header().Set("Content-Type", "application/json")
 	_ = json.NewEncoder(w).Encode(res)

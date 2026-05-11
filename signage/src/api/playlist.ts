@@ -50,7 +50,14 @@ export type PlaylistItem =
     };
 
 export interface PlaylistResponse {
+  id: string;
   items: PlaylistItem[];
+}
+
+export interface PlaybackReport {
+  playlistId: string;
+  currentItemId: string;
+  looped: boolean;
 }
 
 const API_BASE_URL =
@@ -62,4 +69,16 @@ export async function fetchPlaylist(): Promise<PlaylistResponse> {
     throw new Error(`Failed to fetch playlist: ${res.status}`);
   }
   return res.json() as Promise<PlaylistResponse>;
+}
+
+export async function reportPlayback(payload: PlaybackReport): Promise<void> {
+  try {
+    await fetch(`${API_BASE_URL}/signage/playback`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+  } catch {
+    // edge unavailable: drop the report, signage rendering must continue
+  }
 }

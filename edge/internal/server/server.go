@@ -21,6 +21,7 @@ type Server struct {
 	cfg            *config.Config
 	articles       *store.Articles
 	rankings       *store.Rankings
+	playlists      *store.Playlists
 	playlistItems  *store.PlaylistItems
 	media          *store.Media
 	articlesSyncer Refresher
@@ -32,6 +33,7 @@ func New(
 	cfg *config.Config,
 	articles *store.Articles,
 	rankings *store.Rankings,
+	playlists *store.Playlists,
 	playlistItems *store.PlaylistItems,
 	media *store.Media,
 	articlesSyncer Refresher,
@@ -42,6 +44,7 @@ func New(
 		cfg:            cfg,
 		articles:       articles,
 		rankings:       rankings,
+		playlists:      playlists,
 		playlistItems:  playlistItems,
 		media:          media,
 		articlesSyncer: articlesSyncer,
@@ -64,6 +67,7 @@ func (s *Server) Handler() http.Handler {
 	r.Get("/api/signage/articles", s.handleGetArticles)
 	r.Get("/api/signage/rankings", s.handleGetRankings)
 	r.Get("/api/signage/playlist", s.handleGetPlaylist)
+	r.Post("/api/signage/playback", s.handlePostPlayback)
 	r.Post("/api/signage/refresh", s.handleRefresh)
 	r.Get("/media/*", s.handleGetMedia)
 
@@ -86,7 +90,7 @@ func (s *Server) Handler() http.Handler {
 func corsMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Access-Control-Allow-Origin", "*")
-		w.Header().Set("Access-Control-Allow-Methods", "GET, OPTIONS")
+		w.Header().Set("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
 		w.Header().Set("Access-Control-Allow-Headers", "Content-Type")
 		if r.Method == http.MethodOptions {
 			w.WriteHeader(http.StatusNoContent)
