@@ -40,6 +40,10 @@ const formattedDate = computed(() => {
         <p v-if="article.description" class="news-slide__description">
           {{ article.description }}
         </p>
+        <div v-if="article.qrUrl" class="news-slide__qr">
+          <span class="news-slide__qr-label">続きはこちらから</span>
+          <img :src="article.qrUrl" alt="記事のQRコード" class="news-slide__qr-image" />
+        </div>
       </div>
     </div>
   </div>
@@ -56,6 +60,29 @@ const formattedDate = computed(() => {
 .news-slide__image-pane {
   flex: 1;
   overflow: hidden;
+}
+
+/* QR コードをタイトル・説明の下に右寄せで配置 */
+.news-slide__qr {
+  margin-top: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 2vw;
+}
+
+.news-slide__qr-image {
+  display: block;
+  width: 8vmax;
+  padding: 1vmin;
+  background: #fff;
+  border-radius: 0.6vw;
+  image-rendering: pixelated;
+}
+
+.news-slide__qr-label {
+  font-size: 1.5rem;
+  color: var(--color-text-muted);
 }
 
 .news-slide__image {
@@ -85,7 +112,7 @@ const formattedDate = computed(() => {
 }
 
 .news-slide__info-inner {
-  max-width: 100%;
+  width: 100%;
 }
 
 .news-slide__date {
@@ -107,6 +134,11 @@ const formattedDate = computed(() => {
   font-size: 2rem;
   line-height: 1.7;
   color: var(--color-text-muted);
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 4;
+  line-clamp: 4;
+  overflow: hidden;
 }
 
 /* Landscape: swap left/right */

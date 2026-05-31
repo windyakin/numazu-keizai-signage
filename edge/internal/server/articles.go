@@ -10,6 +10,7 @@ type articleDTO struct {
 	ID          string  `json:"id"`
 	Title       string  `json:"title"`
 	ImageURL    string  `json:"imageUrl"`
+	QRURL       string  `json:"qrUrl"`
 	Description *string `json:"description"`
 	Start       string  `json:"start"`
 }
@@ -28,15 +29,22 @@ func (s *Server) handleGetArticles(w http.ResponseWriter, r *http.Request) {
 
 	res := articlesResponse{Articles: make([]articleDTO, 0, len(articles))}
 	for _, a := range articles {
-		// ListReady は ImageKey フィールドにキャッシュ済みファイルの local_path を詰めて返す。
+		// ListReady は ImageKey / QRKey フィールドにキャッシュ済みファイルの local_path を詰めて返す。
 		localPath := ""
 		if a.ImageKey != nil {
 			localPath = *a.ImageKey
+		}
+		// QR は未キャッシュなら QRKey が nil。空 local_path を buildMediaURL に渡すと
+		// mediaDir ルートを指す不正 URL になるため、必ず空ガードして qrUrl も空にする。
+		qrURL := ""
+		if a.QRKey != nil && *a.QRKey != "" {
+			qrURL = buildMediaURL(r, s.cfg.MediaDir, *a.QRKey)
 		}
 		res.Articles = append(res.Articles, articleDTO{
 			ID:          a.ID,
 			Title:       a.Title,
 			ImageURL:    buildMediaURL(r, s.cfg.MediaDir, localPath),
+			QRURL:       qrURL,
 			Description: a.Description,
 			Start:       a.Start.UTC().Format("2006-01-02T15:04:05.000Z"),
 		})

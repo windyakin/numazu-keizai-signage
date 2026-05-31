@@ -36,6 +36,7 @@ let pendingPlaylistId: string | null = null;
 let currentPlaylistId: string | null = null;
 let fetchingPlaylist = false;
 let consecutiveErrors = 0;
+const pickedRandomIds = new Set<string>();
 const allSlidesError = ref(false);
 
 const refreshIntervalMin = parseInt(
@@ -67,7 +68,14 @@ function findNextValidIndex(from: number): number | null {
 
 function pickRandom(): Article | null {
   if (articles.value.length === 0) return null;
-  return articles.value[Math.floor(Math.random() * articles.value.length)];
+  let candidates = articles.value.filter((a) => !pickedRandomIds.has(a.id));
+  if (candidates.length === 0) {
+    pickedRandomIds.clear();
+    candidates = articles.value;
+  }
+  const picked = candidates[Math.floor(Math.random() * candidates.length)];
+  pickedRandomIds.add(picked.id);
+  return picked;
 }
 
 // Slide navigation
@@ -86,6 +94,7 @@ function moveToNext(): void {
 
   const wrapped = next <= currentIndex.value;
   if (wrapped) {
+    pickedRandomIds.clear();
     if (pendingPlaylist !== null && pendingPlaylist.length > 0) {
       playlistItems.value = pendingPlaylist;
       pendingPlaylist = null;

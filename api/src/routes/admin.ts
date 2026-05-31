@@ -10,6 +10,7 @@ import {
   uploadObject,
   getPublicUrl,
 } from "../storage.js";
+import { buildArticleUrl } from "../qr.js";
 
 // Schemas
 
@@ -21,12 +22,6 @@ const ArticleSchema = z.object({
   start: z.string(),
   articleUrl: z.string().nullable(),
 });
-
-function buildArticleUrl(id: string): string | null {
-  const base = process.env.FEED_URL;
-  if (!base) return null;
-  return `${base.replace(/\/+$/, "")}/${id}/`;
-}
 
 const ArticlesResponseSchema = z.object({
   articles: z.array(ArticleSchema),

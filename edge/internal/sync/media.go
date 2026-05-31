@@ -3,6 +3,7 @@ package sync
 import (
 	"context"
 	"crypto/sha256"
+	"encoding/base64"
 	"encoding/hex"
 	"fmt"
 	"io"
@@ -20,7 +21,11 @@ import (
 	"github.com/windyakin/numazu-keizai-signage/edge/internal/store"
 )
 
-const mediaEndpointPath = "/api/signage/media"
+const (
+	mediaEndpointPath = "/api/signage/media"
+	qrEndpointPath    = "/api/signage/qrcode"
+	qrKeyPrefix       = "qr/"
+)
 
 const (
 	mediaMaxRetries = 3
@@ -133,13 +138,33 @@ func (m *MediaSyncer) download(ctx context.Context, e store.MediaEntry) {
 	}
 }
 
-// fetch downloads the object via the upstream `/api/signage/media?key=<storageKey>`
-// endpoint to MEDIA_DIR/<ab>/<cd>/<sha>.<ext> and returns the path relative to
+// downloadURL maps a storage key to the upstream endpoint used to fetch it.
+// QR keys (`qr/{base64url(url)}`) are served on-demand by the dedicated
+// `/api/signage/qrcode?url=...` endpoint; the target URL is recovered by
+// base64url-decoding the part after the `qr/` prefix. All other keys are plain
+// S3 objects fetched through the `/api/signage/media?key=...` proxy.
+func (m *MediaSyncer) downloadURL(storageKey string) (string, error) {
+	if strings.HasPrefix(storageKey, qrKeyPrefix) {
+		encoded := strings.TrimPrefix(storageKey, qrKeyPrefix)
+		decoded, err := base64.RawURLEncoding.DecodeString(encoded)
+		if err != nil {
+			return "", fmt.Errorf("decode qr key %q: %w", storageKey, err)
+		}
+		return m.upstreamAPIURL + qrEndpointPath + "?url=" + url.QueryEscape(string(decoded)), nil
+	}
+	return m.upstreamAPIURL + mediaEndpointPath + "?key=" + url.QueryEscape(storageKey), nil
+}
+
+// fetch downloads the object for storageKey (see downloadURL for endpoint
+// selection) to MEDIA_DIR/<ab>/<cd>/<sha>.<ext> and returns the path relative to
 // MEDIA_DIR (e.g. "ab/cd/abcdef...jpg"). mimeType is used as a fallback for
 // extension detection only when the storage key has no extension and the
 // upstream Content-Type is missing.
 func (m *MediaSyncer) fetch(ctx context.Context, storageKey, mimeType string) (string, error) {
-	downloadURL := m.upstreamAPIURL + mediaEndpointPath + "?key=" + url.QueryEscape(storageKey)
+	downloadURL, err := m.downloadURL(storageKey)
+	if err != nil {
+		return "", err
+	}
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, downloadURL, nil)
 	if err != nil {
 		return "", err

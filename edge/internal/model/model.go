@@ -6,6 +6,7 @@ type Article struct {
 	ID          string    `json:"id"`
 	Title       string    `json:"title"`
 	ImageKey    *string   `json:"imageKey"`
+	QRKey       *string   `json:"qrKey"`
 	Description *string   `json:"description"`
 	Start       time.Time `json:"start"`
 }

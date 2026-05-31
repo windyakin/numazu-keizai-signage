@@ -12,6 +12,7 @@ CREATE TABLE IF NOT EXISTS articles (
   id TEXT PRIMARY KEY,
   title TEXT NOT NULL,
   storage_key TEXT,
+  qr_key TEXT,
   description TEXT,
   start DATETIME NOT NULL,
   fetched_at DATETIME NOT NULL
@@ -83,6 +84,7 @@ func migrate(db *sql.DB) error {
 	stmts := []string{
 		`ALTER TABLE playlist_items ADD COLUMN is_fullscreen INTEGER NOT NULL DEFAULT 0`,
 		`ALTER TABLE playlist_items ADD COLUMN playlist_id TEXT NOT NULL DEFAULT ''`,
+		`ALTER TABLE articles ADD COLUMN qr_key TEXT`,
 	}
 	for _, stmt := range stmts {
 		if _, err := db.Exec(stmt); err != nil {

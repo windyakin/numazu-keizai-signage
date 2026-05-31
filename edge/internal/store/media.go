@@ -117,6 +117,8 @@ func (m *Media) ListOrphans(ctx context.Context) ([]MediaEntry, error) {
 		WHERE storage_key NOT IN (
 			SELECT storage_key FROM articles       WHERE storage_key IS NOT NULL AND storage_key != ''
 			UNION
+			SELECT qr_key      FROM articles       WHERE qr_key      IS NOT NULL AND qr_key      != ''
+			UNION
 			SELECT storage_key FROM rankings       WHERE storage_key IS NOT NULL AND storage_key != ''
 			UNION
 			SELECT storage_key FROM playlist_items WHERE storage_key IS NOT NULL AND storage_key != ''

@@ -67,6 +67,13 @@ func (s *ArticlesSyncer) once(ctx context.Context) error {
 				log.Printf("articles sync: enqueue %s: %v", *a.ImageKey, err)
 			}
 		}
+		// QR コードキー (`qr/{base64url(url)}`) も同じメディアプールに載せる。
+		// MediaSyncer.fetch が prefix を見て専用エンドポイントから取得する。
+		if a.QRKey != nil && *a.QRKey != "" {
+			if err := s.media.Enqueue(ctx, *a.QRKey, "image/png"); err != nil {
+				log.Printf("articles sync: enqueue qr %s: %v", *a.QRKey, err)
+			}
+		}
 	}
 	swept, err := s.media.Sweep(ctx)
 	if err != nil {

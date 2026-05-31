@@ -1,6 +1,8 @@
 import { createRoute, OpenAPIHono, z } from "@hono/zod-openapi";
+import QRCode from "qrcode";
 import { prisma } from "../db.js";
 import { createStorageClient, getObject } from "../storage.js";
+import { buildArticleUrl, qrKeyForUrl } from "../qr.js";
 
 // Schemas
 
@@ -8,6 +10,7 @@ const ArticleSchema = z.object({
   id: z.string(),
   title: z.string(),
   imageKey: z.string().nullable(),
+  qrKey: z.string().nullable(),
   description: z.string().nullable(),
   start: z.string(),
 });
@@ -115,6 +118,24 @@ const getPlaylistRoute = createRoute({
   },
 });
 
+const getQrcodeRoute = createRoute({
+  method: "get",
+  path: "/api/signage/qrcode",
+  request: {
+    query: z.object({ url: z.string().url() }),
+  },
+  responses: {
+    200: {
+      content: { "image/png": { schema: z.any() } },
+      description: "指定 URL の QR コード PNG",
+    },
+    400: {
+      content: { "application/json": { schema: z.object({ error: z.string() }) } },
+      description: "QR 生成に失敗",
+    },
+  },
+});
+
 // Handlers
 
 export const signageApp = new OpenAPIHono();
@@ -127,13 +148,17 @@ signageApp.openapi(getArticlesRoute, async (c) => {
   });
 
   return c.json({
-    articles: articles.map((a) => ({
-      id: a.id,
-      title: a.title,
-      imageKey: a.mediaFile?.storageKey ?? null,
-      description: a.description,
-      start: a.start.toISOString(),
-    })),
+    articles: articles.map((a) => {
+      const url = buildArticleUrl(a.id);
+      return {
+        id: a.id,
+        title: a.title,
+        imageKey: a.mediaFile?.storageKey ?? null,
+        qrKey: url ? qrKeyForUrl(url) : null,
+        description: a.description,
+        start: a.start.toISOString(),
+      };
+    }),
   });
 });
 
@@ -208,6 +233,23 @@ signageApp.openapi(getPlaylistRoute, async (c) => {
   });
 
   return c.json({ id: playlist.id, items });
+});
+
+// QR code (任意 URL をオンデマンド生成。edge が /api/signage/qrcode?url=... で取得しキャッシュする)
+
+signageApp.openapi(getQrcodeRoute, async (c) => {
+  const { url } = c.req.valid("query");
+  try {
+    const png = await QRCode.toBuffer(url, { type: "png", margin: 1, width: 512 });
+    const body = new ArrayBuffer(png.byteLength);
+    new Uint8Array(body).set(png);
+    c.header("Content-Type", "image/png");
+    c.header("Cache-Control", "public, max-age=31536000, immutable");
+    return c.body(body, 200);
+  } catch (e) {
+    console.error(`[signage/qrcode] url=${url}`, e);
+    return c.json({ error: "failed to generate qr code" }, 400);
+  }
 });
 
 // Media proxy

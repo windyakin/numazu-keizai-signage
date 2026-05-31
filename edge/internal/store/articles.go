@@ -36,11 +36,12 @@ func (a *Articles) Sync(ctx context.Context, articles []model.Article, fetchedAt
 	defer tx.Rollback()
 
 	upsert, err := tx.PrepareContext(ctx, `
-		INSERT INTO articles (id, title, storage_key, description, start, fetched_at)
-		VALUES (?, ?, ?, ?, ?, ?)
+		INSERT INTO articles (id, title, storage_key, qr_key, description, start, fetched_at)
+		VALUES (?, ?, ?, ?, ?, ?, ?)
 		ON CONFLICT(id) DO UPDATE SET
 			title = excluded.title,
 			storage_key = excluded.storage_key,
+			qr_key = excluded.qr_key,
 			description = excluded.description,
 			start = excluded.start,
 			fetched_at = excluded.fetched_at
@@ -52,7 +53,7 @@ func (a *Articles) Sync(ctx context.Context, articles []model.Article, fetchedAt
 
 	ids := make([]any, 0, len(articles))
 	for _, ar := range articles {
-		if _, err := upsert.ExecContext(ctx, ar.ID, ar.Title, ar.ImageKey, ar.Description, ar.Start, fetchedAt); err != nil {
+		if _, err := upsert.ExecContext(ctx, ar.ID, ar.Title, ar.ImageKey, ar.QRKey, ar.Description, ar.Start, fetchedAt); err != nil {
 			return 0, err
 		}
 		ids = append(ids, ar.ID)
@@ -98,13 +99,16 @@ func (a *Articles) List(ctx context.Context) ([]model.Article, error) {
 }
 
 // ListReady returns articles whose image has been downloaded (media_cache.status='ready').
-// The Article.ImageKey field is overloaded to carry the cached media's local_path
-// (relative to MEDIA_DIR), so the caller can pass it straight to buildMediaURL.
+// The Article.ImageKey / QRKey fields are overloaded to carry each cached media's
+// local_path (relative to MEDIA_DIR), so the caller can pass them straight to
+// buildMediaURL. The QR code is optional: a LEFT JOIN keeps the article visible even
+// when its QR has not been cached yet, in which case QRKey stays nil.
 func (a *Articles) ListReady(ctx context.Context) ([]model.Article, error) {
 	rows, err := a.db.QueryContext(ctx, `
-		SELECT a.id, a.title, m.local_path, a.description, a.start
+		SELECT a.id, a.title, m.local_path, mq.local_path, a.description, a.start
 		FROM articles a
 		JOIN media_cache m ON m.storage_key = a.storage_key
+		LEFT JOIN media_cache mq ON mq.storage_key = a.qr_key AND mq.status = 'ready'
 		WHERE m.status = 'ready'
 		ORDER BY a.start DESC
 		LIMIT ?
@@ -118,10 +122,15 @@ func (a *Articles) ListReady(ctx context.Context) ([]model.Article, error) {
 	for rows.Next() {
 		var ar model.Article
 		var localPath string
-		if err := rows.Scan(&ar.ID, &ar.Title, &localPath, &ar.Description, &ar.Start); err != nil {
+		var qrLocalPath sql.NullString
+		if err := rows.Scan(&ar.ID, &ar.Title, &localPath, &qrLocalPath, &ar.Description, &ar.Start); err != nil {
 			return nil, err
 		}
 		ar.ImageKey = &localPath
+		if qrLocalPath.Valid && qrLocalPath.String != "" {
+			qp := qrLocalPath.String
+			ar.QRKey = &qp
+		}
 		out = append(out, ar)
 	}
 	return out, rows.Err()
