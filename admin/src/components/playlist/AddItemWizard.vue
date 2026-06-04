@@ -32,19 +32,21 @@ function mediaContentUrl(id: string): string {
   return `${BASE_URL}/media/${id}/content`
 }
 
-type WizardKind = 'ARTICLE_LATEST' | 'ARTICLE_RANDOM' | 'RANKING' | 'MEDIA'
+type WizardKind = 'ARTICLE_LATEST' | 'ARTICLE_RANDOM' | 'RANKING' | 'WEATHER' | 'MEDIA'
 
 const kindOptions: { label: string; value: WizardKind; icon: string; description: string }[] = [
   { label: 'メディア表示', value: 'MEDIA', icon: 'pi pi-images', description: '画像・動画を表示' },
   { label: '最新記事', value: 'ARTICLE_LATEST', icon: 'pi pi-sparkles', description: '最新の記事を表示' },
   { label: 'ランダム記事', value: 'ARTICLE_RANDOM', icon: 'pi pi-sync', description: 'ランダムに記事を選択' },
   { label: 'ランキング', value: 'RANKING', icon: 'pi pi-trophy', description: 'アクセスランキングを表示' },
+  { label: '天気', value: 'WEATHER', icon: 'pi pi-cloud', description: '天気予報を表示' },
 ]
 
 const defaultDurations: Record<PlaylistItemType, number> = {
   ARTICLE_LATEST: 8,
   ARTICLE_RANDOM: 8,
   RANKING: 16,
+  WEATHER: 16,
   IMAGE: 8,
   VIDEO: 0,
 }
@@ -265,36 +267,40 @@ function confirmAdd() {
           class="w-full"
         />
         <div v-if="filteredMediaFiles.length > 0" class="media-grid">
-          <button
+          <div
             v-for="f in filteredMediaFiles"
             :key="f.id"
-            type="button"
-            :class="['media-item', { selected: selectedMediaFile?.id === f.id }]"
-            @click="selectedMediaFile = f"
+            class="media-item-wrapper"
           >
-            <Thumb
-              :src="f.type === 'IMAGE' ? mediaContentUrl(f.id) : null"
-              :alt="f.originalName"
-              :kind="f.type"
-              width="100%"
-              :height="120"
-              :rounded="6"
-            />
-            <span class="media-item-name" :title="f.originalName">{{ f.originalName }}</span>
-            <Tag
-              :value="f.type === 'IMAGE' ? '画像' : '動画'"
-              :severity="f.type === 'IMAGE' ? 'success' : 'info'"
-              class="media-item-tag"
-            />
+            <button
+              type="button"
+              :class="['media-item', { selected: selectedMediaFile?.id === f.id }]"
+              @click="selectedMediaFile = f"
+            >
+              <Thumb
+                :src="f.type === 'IMAGE' ? mediaContentUrl(f.id) : null"
+                :alt="f.originalName"
+                :kind="f.type"
+                width="100%"
+                :height="120"
+                :rounded="6"
+              />
+              <span class="media-item-name" :title="f.originalName">{{ f.originalName }}</span>
+              <Tag
+                :value="f.type === 'IMAGE' ? '画像' : '動画'"
+                :severity="f.type === 'IMAGE' ? 'success' : 'info'"
+                class="media-item-tag"
+              />
+            </button>
             <button
               type="button"
               class="preview-btn"
               aria-label="プレビュー"
-              @click.stop="openMediaPreview(f)"
+              @click="openMediaPreview(f)"
             >
               <i class="pi pi-search" />
             </button>
-          </button>
+          </div>
         </div>
         <div v-else-if="mediaStore.files.length === 0" class="empty-state">
           <i class="pi pi-image empty-icon" />
@@ -560,8 +566,15 @@ function confirmAdd() {
   align-content: start;
 }
 
-.media-item {
+.media-item-wrapper {
   position: relative;
+  display: flex;
+  min-width: 0;
+}
+
+.media-item {
+  flex: 1;
+  min-width: 0;
   display: flex;
   flex-direction: column;
   gap: 6px;
@@ -615,8 +628,8 @@ function confirmAdd() {
   transition: opacity 120ms ease, background 120ms ease;
 }
 
-.media-item:hover .preview-btn,
-.media-item:focus-within .preview-btn {
+.media-item-wrapper:hover .preview-btn,
+.media-item-wrapper:focus-within .preview-btn {
   opacity: 1;
 }
 

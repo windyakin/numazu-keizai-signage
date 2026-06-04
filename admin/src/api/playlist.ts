@@ -1,6 +1,6 @@
 import { apiFetch } from './client'
 
-export type PlaylistItemType = 'ARTICLE_LATEST' | 'ARTICLE_RANDOM' | 'RANKING' | 'IMAGE' | 'VIDEO'
+export type PlaylistItemType = 'ARTICLE_LATEST' | 'ARTICLE_RANDOM' | 'RANKING' | 'WEATHER' | 'IMAGE' | 'VIDEO'
 
 export interface PlaylistMediaFile {
   id: string
@@ -31,6 +31,7 @@ export type CreatePlaylistItemBody =
   | { type: 'ARTICLE_LATEST'; durationSec: number }
   | { type: 'ARTICLE_RANDOM'; durationSec: number }
   | { type: 'RANKING'; durationSec: number }
+  | { type: 'WEATHER'; durationSec: number }
   | { type: 'IMAGE'; durationSec: number; mediaFileId: string; isFullscreen?: boolean }
   | { type: 'VIDEO'; durationSec?: null; mediaFileId: string; isFullscreen?: boolean }
 

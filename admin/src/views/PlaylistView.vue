@@ -345,6 +345,7 @@ const typeLabel: Record<PlaylistItemType, string> = {
   ARTICLE_LATEST: '最新記事',
   ARTICLE_RANDOM: 'ランダム記事',
   RANKING: 'ランキング',
+  WEATHER: '天気',
   IMAGE: '画像',
   VIDEO: '動画',
 }
@@ -353,6 +354,7 @@ const typeSeverity: Record<PlaylistItemType, 'success' | 'info' | 'warn' | 'seco
   ARTICLE_LATEST: 'info',
   ARTICLE_RANDOM: 'secondary',
   RANKING: 'warn',
+  WEATHER: 'info',
   IMAGE: 'success',
   VIDEO: 'success',
 }
@@ -361,6 +363,7 @@ const defaultDurations: Record<PlaylistItemType, number> = {
   ARTICLE_LATEST: 8,
   ARTICLE_RANDOM: 8,
   RANKING: 16,
+  WEATHER: 16,
   IMAGE: 8,
   VIDEO: 0,
 }

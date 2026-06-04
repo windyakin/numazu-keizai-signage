@@ -35,6 +35,7 @@ const iconClass = computed(() => {
     case 'ARTICLE_LATEST': return 'pi pi-sparkles'
     case 'ARTICLE_RANDOM': return 'pi pi-sync'
     case 'RANKING': return 'pi pi-trophy'
+    case 'WEATHER': return 'pi pi-cloud'
     default: return 'pi pi-image'
   }
 })

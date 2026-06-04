@@ -32,6 +32,22 @@ const RankingsResponseSchema = z.object({
   fetchedAt: z.string().nullable(),
 });
 
+const WeatherDaySchema = z.object({
+  date: z.string(),
+  dayOffset: z.number(),
+  weatherCode: z.number(), // 気象庁 天気予報用テロップ番号
+  description: z.string(),
+  tempMin: z.number().nullable(),
+  tempMax: z.number().nullable(),
+  tempCurrent: z.number().nullable(), // アメダス現在気温（今日のみ）
+  pop: z.number(),
+});
+
+const WeatherResponseSchema = z.object({
+  days: z.array(WeatherDaySchema),
+  fetchedAt: z.string().nullable(),
+});
+
 // Playlist Schemas
 
 const MediaPayloadSchema = z.object({
@@ -58,6 +74,13 @@ const PlaylistItemSchema = z.discriminatedUnion("type", [
   z.object({
     id: z.string(),
     type: z.literal("RANKING"),
+    order: z.number(),
+    durationSec: z.number().nullable(),
+    payload: z.null(),
+  }),
+  z.object({
+    id: z.string(),
+    type: z.literal("WEATHER"),
     order: z.number(),
     durationSec: z.number().nullable(),
     payload: z.null(),
@@ -103,6 +126,17 @@ const getRankingsRoute = createRoute({
     200: {
       content: { "application/json": { schema: RankingsResponseSchema } },
       description: "サイネージ表示用アクセスランキング",
+    },
+  },
+});
+
+const getWeatherRoute = createRoute({
+  method: "get",
+  path: "/api/signage/weather",
+  responses: {
+    200: {
+      content: { "application/json": { schema: WeatherResponseSchema } },
+      description: "サイネージ表示用天気予報",
     },
   },
 });
@@ -183,6 +217,28 @@ signageApp.openapi(getRankingsRoute, async (c) => {
   });
 });
 
+signageApp.openapi(getWeatherRoute, async (c) => {
+  const days = await prisma.weatherForecast.findMany({
+    orderBy: { dayOffset: "asc" },
+  });
+
+  const fetchedAt = days.length > 0 ? days[0].fetchedAt.toISOString() : null;
+
+  return c.json({
+    days: days.map((d) => ({
+      date: d.date,
+      dayOffset: d.dayOffset,
+      weatherCode: d.weatherCode,
+      description: d.description,
+      tempMin: d.tempMin,
+      tempMax: d.tempMax,
+      tempCurrent: d.tempCurrent,
+      pop: d.pop,
+    })),
+    fetchedAt,
+  });
+});
+
 signageApp.openapi(getPlaylistRoute, async (c) => {
   const playlist = await prisma.playlist.findFirst({
     where: { isActive: true },
@@ -213,6 +269,8 @@ signageApp.openapi(getPlaylistRoute, async (c) => {
         return { ...base, type: "ARTICLE_RANDOM" as const, payload: null };
       case "RANKING":
         return { ...base, type: "RANKING" as const, payload: null };
+      case "WEATHER":
+        return { ...base, type: "WEATHER" as const, payload: null };
       case "IMAGE":
         return {
           ...base,

@@ -64,10 +64,25 @@ model PlaylistItem {
   @@index([playlistId, order])
 }
 
+model WeatherForecast {
+  date        String   @id // "2026-05-31"（JST 基準の日付）
+  dayOffset   Int // 0=今日, 1=明日, ...（並び順・抽出用）
+  weatherCode Int // 気象庁 天気予報用テロップ番号（1xx 晴 / 2xx 曇 / 3xx 雨 / 4xx 雪）
+  description String // 日本語天気（例 "くもり後雨"）
+  tempMin     Float? // 最低気温。気象庁が当日分を持たない場合などは null
+  tempMax     Float? // 最高気温。同上
+  tempCurrent Float? // アメダス現在気温。今日の行のみ設定（最高/最低が無いとき表示用）
+  pop         Float // 降水確率 0..1
+  fetchedAt   DateTime @default(now())
+
+  @@index([dayOffset])
+}
+
 enum PlaylistItemType {
   ARTICLE_LATEST
   ARTICLE_RANDOM
   RANKING
+  WEATHER
   IMAGE
   VIDEO
 }

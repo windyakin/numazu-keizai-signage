@@ -16,6 +16,7 @@ type refreshResponseDTO struct {
 	Articles refreshResultDTO `json:"articles"`
 	Rankings refreshResultDTO `json:"rankings"`
 	Playlist refreshResultDTO `json:"playlist"`
+	Weather  refreshResultDTO `json:"weather"`
 }
 
 func (s *Server) handleRefresh(w http.ResponseWriter, r *http.Request) {
@@ -25,10 +26,11 @@ func (s *Server) handleRefresh(w http.ResponseWriter, r *http.Request) {
 		Articles: runRefresh(ctx, "articles", s.articlesSyncer.Refresh),
 		Rankings: runRefresh(ctx, "rankings", s.rankingsSyncer.Refresh),
 		Playlist: runRefresh(ctx, "playlist", s.playlistSyncer.Refresh),
+		Weather:  runRefresh(ctx, "weather", s.weatherSyncer.Refresh),
 	}
 
 	status := http.StatusOK
-	if !res.Articles.OK || !res.Rankings.OK || !res.Playlist.OK {
+	if !res.Articles.OK || !res.Rankings.OK || !res.Playlist.OK || !res.Weather.OK {
 		status = http.StatusInternalServerError
 	}
 

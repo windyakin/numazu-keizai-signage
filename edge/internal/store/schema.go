@@ -49,6 +49,19 @@ CREATE TABLE IF NOT EXISTS playlist_items (
 
 CREATE INDEX IF NOT EXISTS idx_playlist_items_playlist ON playlist_items(playlist_id);
 
+-- 天気予報キャッシュ（画像なし）。上流 /api/signage/weather を replace 型で同期する。
+CREATE TABLE IF NOT EXISTS weather (
+  date TEXT PRIMARY KEY,
+  day_offset INTEGER NOT NULL,
+  weather_code INTEGER NOT NULL,
+  description TEXT NOT NULL,
+  temp_min REAL,
+  temp_max REAL,
+  temp_current REAL,
+  pop REAL NOT NULL,
+  fetched_at DATETIME NOT NULL
+);
+
 -- 上流 api の MediaFile (S3 オブジェクト) ローカルキャッシュ。
 -- articles / rankings / playlist_items 全てから参照される単一の物理メディア追跡テーブル。
 CREATE TABLE IF NOT EXISTS media_cache (

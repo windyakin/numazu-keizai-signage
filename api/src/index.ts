@@ -6,6 +6,7 @@ import { adminApp } from "./routes/admin.js";
 import { mediaApp } from "./routes/media.js";
 import { startArticlesJob } from "./jobs/articlesFetcher.js";
 import { startRankingsJob } from "./jobs/rankingsFetcher.js";
+import { startWeatherJob } from "./jobs/weatherFetcher.js";
 
 const app = new OpenAPIHono();
 
@@ -28,4 +29,5 @@ serve({ fetch: app.fetch, port }, () => {
   console.log(`API server running on port ${port}`);
   startArticlesJob();
   startRankingsJob();
+  startWeatherJob();
 });

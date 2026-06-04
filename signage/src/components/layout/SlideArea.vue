@@ -8,8 +8,10 @@ import {
 } from "../../api/playlist";
 import { fetchArticles, type Article } from "../../api/articles";
 import { fetchRankings, type RankingsData } from "../../api/rankings";
+import { fetchWeather, type WeatherData } from "../../api/weather";
 import NewsArticleSlide from "../slides/NewsArticleSlide.vue";
 import RankingSlide from "../slides/RankingSlide.vue";
+import WeatherSlide from "../slides/WeatherSlide.vue";
 import ImageSlide from "../slides/ImageSlide.vue";
 import VideoSlide from "../slides/VideoSlide.vue";
 
@@ -21,6 +23,7 @@ const emit = defineEmits<{
 const playlistItems = ref<PlaylistItem[]>([]);
 const articles = ref<Article[]>([]);
 const rankingsData = ref<RankingsData>({ rankings: [], fetchedAt: null });
+const weatherData = ref<WeatherData>({ days: [], fetchedAt: null });
 const currentIndex = ref(0);
 const randomArticle = ref<Article | null>(null);
 const loading = ref(true);
@@ -53,6 +56,7 @@ const currentItem = computed(() => playlistItems.value[currentIndex.value] ?? nu
 function isReady(item: PlaylistItem): boolean {
   if (item.type === "ARTICLE_LATEST" || item.type === "ARTICLE_RANDOM") return articles.value.length > 0;
   if (item.type === "RANKING") return rankingsData.value.rankings.length > 0;
+  if (item.type === "WEATHER") return weatherData.value.days.length > 0;
   return item.payload !== null;
 }
 
@@ -184,6 +188,12 @@ const currentRanking = computed<RankingsData | null>(() => {
   return rankingsData.value;
 });
 
+const currentWeather = computed<WeatherData | null>(() => {
+  const item = currentItem.value;
+  if (!item || item.type !== "WEATHER") return null;
+  return weatherData.value;
+});
+
 const currentMedia = computed<MediaPayload | null>(() => {
   const item = currentItem.value;
   if (!item || (item.type !== "IMAGE" && item.type !== "VIDEO")) return null;
@@ -192,11 +202,17 @@ const currentMedia = computed<MediaPayload | null>(() => {
 
 // Playlist fetch
 async function loadInitial(): Promise<void> {
-  const [data, fetchedArticles, fetchedRankings] = await Promise.all([fetchPlaylist(), fetchArticles(), fetchRankings()]);
+  const [data, fetchedArticles, fetchedRankings, fetchedWeather] = await Promise.all([
+    fetchPlaylist(),
+    fetchArticles(),
+    fetchRankings(),
+    fetchWeather(),
+  ]);
   playlistItems.value = data.items;
   currentPlaylistId = data.id || null;
   articles.value = fetchedArticles;
   rankingsData.value = fetchedRankings;
+  weatherData.value = fetchedWeather;
   if (currentIndex.value >= data.items.length && data.items.length > 0) {
     currentIndex.value = 0;
   }
@@ -220,9 +236,14 @@ async function fetchNextPlaylist(): Promise<void> {
 
 async function refreshArticlesAndRankings(): Promise<void> {
   try {
-    const [fetchedArticles, fetchedRankings] = await Promise.all([fetchArticles(), fetchRankings()]);
+    const [fetchedArticles, fetchedRankings, fetchedWeather] = await Promise.all([
+      fetchArticles(),
+      fetchRankings(),
+      fetchWeather(),
+    ]);
     articles.value = fetchedArticles;
     rankingsData.value = fetchedRankings;
+    weatherData.value = fetchedWeather;
   } catch {
     // silently ignore background refresh errors
   }
@@ -324,6 +345,12 @@ onUnmounted(() => {
           :key="`ranking-${currentItem.id}`"
           :rankings="currentRanking.rankings"
           :fetched-at="currentRanking.fetchedAt"
+        />
+        <WeatherSlide
+          v-else-if="currentItem.type === 'WEATHER' && currentWeather"
+          :key="`weather-${currentItem.id}`"
+          :days="currentWeather.days"
+          :fetched-at="currentWeather.fetchedAt"
         />
         <ImageSlide
           v-else-if="currentItem.type === 'IMAGE' && currentMedia"

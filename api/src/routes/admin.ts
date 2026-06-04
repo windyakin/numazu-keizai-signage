@@ -3,6 +3,7 @@ import { randomUUID } from "node:crypto";
 import { prisma } from "../db.js";
 import { fetchArticles } from "../jobs/articlesFetcher.js";
 import { fetchRankings } from "../jobs/rankingsFetcher.js";
+import { fetchWeather } from "../jobs/weatherFetcher.js";
 import {
   createStorageClient,
   deleteObject,
@@ -108,6 +109,7 @@ const PlaylistItemTypeSchema = z.enum([
   "ARTICLE_LATEST",
   "ARTICLE_RANDOM",
   "RANKING",
+  "WEATHER",
   "IMAGE",
   "VIDEO",
 ]);
@@ -147,6 +149,7 @@ const CreatePlaylistItemRequestSchema = z.discriminatedUnion("type", [
   z.object({ type: z.literal("ARTICLE_LATEST"), durationSec: z.number().int().positive() }),
   z.object({ type: z.literal("ARTICLE_RANDOM"), durationSec: z.number().int().positive() }),
   z.object({ type: z.literal("RANKING"),        durationSec: z.number().int().positive() }),
+  z.object({ type: z.literal("WEATHER"),        durationSec: z.number().int().positive() }),
   z.object({ type: z.literal("IMAGE"),          durationSec: z.number().int().positive(), mediaFileId: z.string(), isFullscreen: z.boolean().optional() }),
   z.object({ type: z.literal("VIDEO"),          durationSec: z.number().int().positive().nullable().optional(), mediaFileId: z.string(), isFullscreen: z.boolean().optional() }),
 ]);
@@ -205,6 +208,21 @@ const refreshRankingsRoute = createRoute({
     200: {
       content: { "application/json": { schema: RefreshResponseSchema } },
       description: "ランキング再取得結果",
+    },
+    500: {
+      content: { "application/json": { schema: ErrorResponseSchema } },
+      description: "エラー",
+    },
+  },
+});
+
+const refreshWeatherRoute = createRoute({
+  method: "post",
+  path: "/api/admin/weather/refresh",
+  responses: {
+    200: {
+      content: { "application/json": { schema: RefreshResponseSchema } },
+      description: "天気予報再取得結果",
     },
     500: {
       content: { "application/json": { schema: ErrorResponseSchema } },
@@ -536,6 +554,16 @@ adminApp.openapi(refreshArticlesRoute, async (c) => {
 adminApp.openapi(refreshRankingsRoute, async (c) => {
   try {
     const fetched = await fetchRankings();
+    return c.json({ fetched }, 200);
+  } catch (err) {
+    const message = err instanceof Error ? err.message : "Unknown error";
+    return c.json({ error: message }, 500);
+  }
+});
+
+adminApp.openapi(refreshWeatherRoute, async (c) => {
+  try {
+    const fetched = await fetchWeather();
     return c.json({ fetched }, 200);
   } catch (err) {
     const message = err instanceof Error ? err.message : "Unknown error";

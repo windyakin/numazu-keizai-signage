@@ -42,19 +42,22 @@ func main() {
 	playlists := store.NewPlaylists(db)
 	playlistItems := store.NewPlaylistItems(db)
 	media := store.NewMedia(db)
+	weather := store.NewWeather(db)
 
 	mediaSyncer := sync.NewMediaSyncer(media, playlists, cfg.MediaDir, 30*time.Second, cfg.UpstreamAPIURL)
 	articlesSyncer := sync.NewArticlesSyncer(cfg.UpstreamAPIURL, articles, mediaSyncer, interval)
 	rankingsSyncer := sync.NewRankingsSyncer(cfg.UpstreamAPIURL, rankings, mediaSyncer, interval)
 	playlistSyncer := sync.NewPlaylistSyncer(cfg.UpstreamAPIURL, playlists, playlistItems, mediaSyncer, interval)
+	weatherSyncer := sync.NewWeatherSyncer(cfg.UpstreamAPIURL, weather, interval)
 	go mediaSyncer.Run(ctx)
 	go articlesSyncer.Run(ctx)
 	go rankingsSyncer.Run(ctx)
 	go playlistSyncer.Run(ctx)
+	go weatherSyncer.Run(ctx)
 
 	srv := &http.Server{
 		Addr:    cfg.ListenAddr,
-		Handler: server.New(cfg, articles, rankings, playlists, playlistItems, media, articlesSyncer, rankingsSyncer, playlistSyncer).Handler(),
+		Handler: server.New(cfg, articles, rankings, playlists, playlistItems, media, weather, articlesSyncer, rankingsSyncer, playlistSyncer, weatherSyncer).Handler(),
 	}
 
 	go func() {

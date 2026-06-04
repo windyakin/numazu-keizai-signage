@@ -24,9 +24,11 @@ type Server struct {
 	playlists      *store.Playlists
 	playlistItems  *store.PlaylistItems
 	media          *store.Media
+	weather        *store.Weather
 	articlesSyncer Refresher
 	rankingsSyncer Refresher
 	playlistSyncer Refresher
+	weatherSyncer  Refresher
 }
 
 func New(
@@ -36,9 +38,11 @@ func New(
 	playlists *store.Playlists,
 	playlistItems *store.PlaylistItems,
 	media *store.Media,
+	weather *store.Weather,
 	articlesSyncer Refresher,
 	rankingsSyncer Refresher,
 	playlistSyncer Refresher,
+	weatherSyncer Refresher,
 ) *Server {
 	return &Server{
 		cfg:            cfg,
@@ -47,9 +51,11 @@ func New(
 		playlists:      playlists,
 		playlistItems:  playlistItems,
 		media:          media,
+		weather:        weather,
 		articlesSyncer: articlesSyncer,
 		rankingsSyncer: rankingsSyncer,
 		playlistSyncer: playlistSyncer,
+		weatherSyncer:  weatherSyncer,
 	}
 }
 
@@ -66,6 +72,7 @@ func (s *Server) Handler() http.Handler {
 
 	r.Get("/api/signage/articles", s.handleGetArticles)
 	r.Get("/api/signage/rankings", s.handleGetRankings)
+	r.Get("/api/signage/weather", s.handleGetWeather)
 	r.Get("/api/signage/playlist", s.handleGetPlaylist)
 	r.Post("/api/signage/playback", s.handlePostPlayback)
 	r.Post("/api/signage/refresh", s.handleRefresh)

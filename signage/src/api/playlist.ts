@@ -2,6 +2,7 @@ export type PlaylistItemType =
   | "ARTICLE_LATEST"
   | "ARTICLE_RANDOM"
   | "RANKING"
+  | "WEATHER"
   | "IMAGE"
   | "VIDEO";
 
@@ -30,6 +31,13 @@ export type PlaylistItem =
   | {
       id: string;
       type: "RANKING";
+      order: number;
+      durationSec: number | null;
+      payload: null;
+    }
+  | {
+      id: string;
+      type: "WEATHER";
       order: number;
       durationSec: number | null;
       payload: null;
