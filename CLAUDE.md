@@ -78,6 +78,14 @@ type ArticlesResponse = {
 | GET | `/api/signage/media?key={imageKey}` | S3 オブジェクトキーを指定して画像実体を返す (edge / admin から利用) |
 | POST | `/api/admin/articles/refresh` | 記事を手動で再取得する（開発用） |
 | POST | `/api/admin/rankings/refresh` | ランキングを手動で再取得する（開発用） |
+| GET | `/api/auth/login` | 未ログインなら Auth0 へリダイレクト。ログイン済みなら admin トップへ戻す |
+| GET | `/api/auth/callback` | Auth0 からのリダイレクトを受けてトークン交換・セッション Cookie 発行 |
+| GET/POST | `/api/auth/logout` | セッションを破棄する |
+| GET | `/api/auth/me` | 認証状態を返す（admin 起動時ゲート用） |
+
+`/api/signage/*`（articles / rankings / weather / playlist / qrcode / media）は **`Authorization: Bearer {SIGNAGE_API_TOKEN}` 必須**（edge ↔ api のサーバー間認証）。`SIGNAGE_API_TOKEN` 未設定時は警告ログを出して認証をスキップする（移行用 fail-open）。
+
+`/api/admin/*` は **Auth0 (OIDC) のセッション Cookie で保護**する（`/api/admin/media/by-key` のサムネプロキシ含む）。admin と api は同一オリジンのため Cookie が fetch / XHR / `<img>` すべてに自動付与される。api 側で OIDC 認可コードフローを処理し（`@hono/oidc-auth`）、暗号化 HttpOnly Cookie を発行するサーバーサイド方式（SPA のアクセストークン方式ではない）。`/api/admin/*` のガード (`middleware/adminAuth.ts`) は未認証時に **401** を返す（リダイレクトはログイン起点 `/api/auth/login` のみ）。OIDC env 未設定時は `SIGNAGE_API_TOKEN` 同様の fail-open で認証をスキップする。
 
 `GET /api/signage/articles` のレスポンス例:
 ```json
@@ -143,7 +151,18 @@ FEED_URL=https://...             # フィードのエンドポイントURL
 FEED_IMAGE_BASE_URL=https://...  # 画像ファイル名に付けるベースURL (api 内部で外部画像取得 → S3 キャッシュに使う)
 FEED_FETCH_INTERVAL_MIN=30
 ACCESS_URL=https://...           # アクセスランキングのエンドポイントURL
+SIGNAGE_API_TOKEN=...            # edge ↔ api 間のサーバー間認証用の共有シークレット (edge にも同値を設定)
 PORT=3000
+# admin 認証 (Auth0 / OIDC)。未設定の間は admin の認証を fail-open でスキップする
+OIDC_ISSUER=https://<tenant>.auth0.com   # 末尾スラッシュ無し
+OIDC_CLIENT_ID=...
+OIDC_CLIENT_SECRET=...
+OIDC_AUTH_SECRET=...                     # セッション JWT 署名鍵。32 文字以上
+OIDC_REDIRECT_URI=http://localhost:5174/api/auth/callback
+OIDC_SCOPES=openid profile email
+OIDC_AUDIENCE=                           # 任意 (api 向けアクセストークンが必要な場合のみ)
+OIDC_AUTH_EXTERNAL_URL=http://localhost:5174  # dev の http で Secure Cookie を無効化するのに必要
+ADMIN_BASE_URL=/                         # ログイン/ログアウト後の戻り先 (prod は /admin/)
 # S3 (RustFS / MinIO 等)
 STORAGE_ENDPOINT=http://rustfs:9000
 STORAGE_REGION=ap-northeast-1
@@ -219,6 +238,12 @@ VITE_RANKING_DURATION_SEC=16
 - `src/api/client.ts` の `apiFetch<T>()` 経由でのみ通信する
 - ベース URL は `VITE_API_BASE_URL`（デフォルト `/api/admin`）
 - signage 用の `/api/signage/` は **使わない**（admin 専用 namespace `/api/admin/` を使う）
+
+**認証（Auth0 / セッション Cookie）**
+- ログインは api の `/api/auth/*` に委ねる。フロントはトークンを一切扱わず、同一オリジンの Cookie に依存する。
+- 起動時に `useAuthStore.init()` が `GET /api/auth/me` を叩き、`unauthenticated` なら `/api/auth/login` へフルページ遷移、`disabled`（api 側 fail-open）ならゲート無しで描画する。`App.vue` は `auth.ready` まで `AppShell` を出さない。
+- `apiFetch` は 401 を受けたら `/api/auth/login` へ遷移する（セッション失効対策）。
+- ログアウトは Sidebar のボタンから `useAuthStore.logout()`（`/api/auth/logout` へ遷移）。
 
 **環境変数**
 ```

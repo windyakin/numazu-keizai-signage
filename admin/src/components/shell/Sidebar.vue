@@ -2,7 +2,9 @@
 import { computed } from 'vue'
 import { useRoute, RouterLink } from 'vue-router'
 import Avatar from 'primevue/avatar'
+import Button from 'primevue/button'
 import Divider from 'primevue/divider'
+import { useAuthStore } from '../../stores/useAuthStore'
 
 interface NavItem {
   label: string
@@ -21,6 +23,13 @@ const emit = defineEmits<{
 }>()
 
 const route = useRoute()
+const auth = useAuthStore()
+
+const displayName = computed(
+  () => auth.user?.name || auth.user?.email || '管理者',
+)
+const secondaryLine = computed(() => (auth.user?.name ? auth.user?.email : '') || 'admin')
+const userInitial = computed(() => displayName.value.charAt(0).toUpperCase())
 
 const items = computed<NavItem[]>(() => [
   { label: 'ダッシュボード', icon: 'pi pi-th-large', route: '/' },
@@ -64,11 +73,22 @@ function isActive(itemRoute: string): boolean {
     </nav>
 
     <div class="footer">
-      <Avatar label="A" shape="circle" />
-      <div class="flex flex-column">
-        <span class="text-sm font-semibold">管理者</span>
-        <span class="text-xs text-color-secondary">admin</span>
+      <Avatar :label="userInitial" shape="circle" />
+      <div class="flex flex-column user-meta">
+        <span class="text-sm font-semibold white-space-nowrap">{{ displayName }}</span>
+        <span class="text-xs text-color-secondary white-space-nowrap">{{ secondaryLine }}</span>
       </div>
+      <Button
+        v-if="auth.enabled"
+        icon="pi pi-sign-out"
+        text
+        rounded
+        severity="secondary"
+        aria-label="ログアウト"
+        v-tooltip.top="'ログアウト'"
+        pt:root:class="ml-auto"
+        @click="auth.logout()"
+      />
     </div>
   </aside>
 </template>
@@ -167,5 +187,14 @@ function isActive(itemRoute: string): boolean {
   padding: 12px 16px;
   border-top: 1px solid var(--p-content-border-color);
   flex-shrink: 0;
+}
+
+.user-meta {
+  min-width: 0;
+}
+
+.user-meta span {
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 </style>

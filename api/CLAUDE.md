@@ -17,7 +17,11 @@ api/
 │   ├── routes/                # リソース単位でルータを分割
 │   │   ├── signage.ts         # /api/signage/*
 │   │   ├── admin.ts           # /api/admin/*
+│   │   ├── auth.ts            # /api/auth/* (Auth0 OIDC ログイン/コールバック/ログアウト/me)
 │   │   └── media.ts           # /api/signage/media など
+│   ├── middleware/            # Hono ミドルウェア
+│   │   ├── signageAuth.ts     # edge ↔ api の共有シークレット Bearer 認証
+│   │   └── adminAuth.ts       # /api/admin/* の Auth0 セッション Cookie ガード
 │   └── jobs/                  # 定期実行ジョブ
 │       ├── articlesFetcher.ts # 記事一覧取得
 │       └── rankingsFetcher.ts # アクセスランキング取得
@@ -33,7 +37,7 @@ api/
 
 1. [src/routes/](src/routes/) に `{resource}.ts` を新規作成。
 2. `OpenAPIHono` インスタンスを `export const {resource}App` として公開。
-3. `createRoute` で定義してから `.openapi(route, handler)` で実装する。素の `.get` / `.post` は使わない（OpenAPI に載らないため）。
+3. `createRoute` で定義してから `.openapi(route, handler)` で実装する。素の `.get` / `.post` は使わない（OpenAPI に載らないため）。例外: ブラウザリダイレクトを返すだけのエンドポイント（`routes/auth.ts` の login / callback / logout）は JSON スキーマに載らないため素の `.get` / `.post` で実装してよい。JSON を返す `/api/auth/me` は `.openapi()` で定義する。
 4. [src/index.ts](src/index.ts) で `app.route("/", {resource}App)` を追加。
 5. Zod スキーマはハンドラと同じファイルの上部にまとめる。
 
@@ -84,6 +88,12 @@ api/
 | `FEED_URL` | 必須 | フィード POST 先。未設定だとジョブが throw |
 | `FEED_IMAGE_BASE_URL` | 必須 | `{base}/{image}` で画像 URL を組み立てる |
 | `ACCESS_URL` | 必須 | アクセスランキング POST 先 |
+| `SIGNAGE_API_TOKEN` | 本番必須 | edge ↔ api 認証の共有シークレット。`/api/signage/*` の Bearer 検証に使う。未設定時は警告ログ + 認証スキップ (移行用 fail-open) |
+| `OIDC_ISSUER` / `OIDC_CLIENT_ID` / `OIDC_CLIENT_SECRET` / `OIDC_AUTH_SECRET` | admin 認証に必須 | Auth0 (OIDC) 認可コードフロー用。この 4 つが揃わないと `adminAuth` は fail-open で `/api/admin/*` を素通りさせる |
+| `OIDC_REDIRECT_URI` | 任意 | コールバック URL。既定 `/callback`。本実装は `/api/auth/callback` を使うので明示設定する。Auth0 の Allowed Callback URLs にも登録 |
+| `OIDC_SCOPES` / `OIDC_AUDIENCE` | 任意 | 既定 scope は `openid profile email`。AUDIENCE は api 向けアクセストークンが必要な場合のみ |
+| `OIDC_AUTH_EXTERNAL_URL` | dev で必要 | http の dev で Secure Cookie を無効化する。未設定だと Cookie が保存されずログインがループする |
+| `ADMIN_BASE_URL` | 任意 | ログイン/ログアウト後の戻り先。既定 `/`、prod は `/admin/` |
 | `FEED_FETCH_INTERVAL_MIN` | 任意 | デフォルト 30。articles / rankings ジョブ共用 |
 | `PORT` | 任意 | デフォルト 3000 |
 

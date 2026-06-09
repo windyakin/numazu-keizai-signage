@@ -15,10 +15,11 @@ admin/
 │   ├── main.ts                 # Vue + PrimeVue + Router + Pinia のセットアップ
 │   ├── App.vue                 # <RouterView /> のみ
 │   ├── api/                    # REST クライアント（fetch ラッパー）
-│   │   ├── client.ts           # 共通 apiFetch<T> — ベース URL 管理はここ
+│   │   ├── client.ts           # 共通 apiFetch<T> — ベース URL 管理 + 401 でログインへ遷移
+│   │   ├── auth.ts             # GET /api/auth/me（認証状態の取得）
 │   │   ├── articles.ts         # 記事 API (/api/admin/articles など)
 │   │   └── rankings.ts         # ランキング API (/api/admin/rankings など)
-│   ├── stores/                 # Pinia ストア
+│   ├── stores/                 # Pinia ストア（useAuthStore で認証状態を保持）
 │   ├── router/
 │   │   └── index.ts            # Vue Router（Hash History）
 │   ├── views/                  # ページ単位のコンポーネント
@@ -55,6 +56,21 @@ admin/
 | `refreshArticles()` | POST | `/articles/refresh` | 記事を手動再取得 |
 | `fetchRankings()` | GET | `/rankings` | ランキング取得 |
 | `refreshRankings()` | POST | `/rankings/refresh` | ランキングを手動再取得 |
+
+---
+
+## 認証（Auth0 / セッション Cookie）
+
+ログインフローは api 側の `/api/auth/*` が処理する。admin と api は同一オリジンなので、認証は HttpOnly セッション Cookie 任せで完結し、フロントはトークンを一切扱わない（`<img>` のサムネにも Cookie が自動付与される）。
+
+- **起動時ゲート**: `App.vue` で `useAuthStore.init()` を呼ぶ。内部で `GET /api/auth/me`（`src/api/auth.ts` の `fetchMe()`、`apiFetch` ではなく生 fetch）を叩き、
+  - `unauthenticated` → `window.location` で `/api/auth/login` へ遷移（Auth0 ログインへ）
+  - `disabled`（api 側 fail-open。OIDC env 未設定）→ ゲート無しで描画
+  - `authenticated` → `user` を保持して描画
+  `auth.ready` が true になるまで `AppShell` は出さない（それまで `ProgressSpinner`）。
+- **セッション失効**: `apiFetch` は 401 を受けると `/api/auth/login` へ遷移する。`/api/auth/me` だけは未ログインを判別したいので `apiFetch` を経由しない。
+- **ログアウト**: Sidebar のボタン → `useAuthStore.logout()`（`/api/auth/logout` へ遷移）。`auth.enabled` が false（認証無効）のときはログアウトボタンを出さない。
+- ユーザー表示名は `useAuthStore.user`（name → email → '管理者' の順でフォールバック）。
 
 ---
 
