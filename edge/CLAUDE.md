@@ -42,16 +42,19 @@ internal/model/model.go          Article / Ranking / Response 型定義
 internal/server/server.go        chi ルーター・CORS ミドルウェア
 internal/server/articles.go      GET /api/signage/articles ハンドラ
 internal/server/rankings.go      GET /api/signage/rankings ハンドラ
+internal/server/weather.go       GET /api/signage/weather ハンドラ
 internal/server/playback.go      POST /api/signage/playback ハンドラ（signage 再生状況の受信）
 internal/store/schema.go         SQLite open・スキーマ初期化（WAL モード）
 internal/store/articles.go       articles テーブル操作（Sync / List / ListReady）。List 系は最新 15 件 cap
 internal/store/rankings.go       rankings テーブル操作（Replace / List / ListReady）
+internal/store/weather.go        weather テーブル操作（Replace / List）。画像参照なし
 internal/store/playlists.go      playlists テーブル操作（Upsert / MarkActive / IncrementPlayCount / Cleanup / HasReported / Latest / List）
 internal/store/playlist.go       playlist_items テーブル操作（Replace(playlistId, ...) / List(playlistId)）
 internal/store/media.go          media_cache テーブル操作（Enqueue / MarkReady / MarkFailed / LocalPath / ListOrphans / Delete）
 internal/sync/client.go          upstream HTTP クライアント（getJSON）
 internal/sync/articles.go        ArticlesSyncer（記事 pull → articles ID 差分同期 → メディア enqueue → media sweep）
 internal/sync/rankings.go        RankingsSyncer（ランキング pull → rankings replace → メディア enqueue → media sweep）
+internal/sync/weather.go         WeatherSyncer（天気 pull → weather replace。画像なし）
 internal/sync/playlist.go        PlaylistSyncer（プレイリスト pull → items replace → メディア enqueue → media sweep）
 internal/sync/media.go           MediaSyncer（記事画像 / ランキング画像 / スライドメディアを単一プールでダウンロード・4 並列ワーカー、Sweep で孤児削除）
 ```
@@ -125,6 +128,7 @@ signage 側の API クライアント型 (`signage/src/api/articles.ts`, `rankin
 | GET | `/health` | ヘルスチェック (`{"status":"ok"}`) |
 | GET | `/api/signage/articles` | キャッシュ済み記事一覧（ready のみ） |
 | GET | `/api/signage/rankings` | キャッシュ済みランキング（ready のみ） |
+| GET | `/api/signage/weather` | キャッシュ済み天気予報（`{days, fetchedAt}`。画像なし） |
 | GET | `/api/signage/playlist` | キャッシュ済みプレイリスト（最新 fetch を `{id, items}` で返す） |
 | POST | `/api/signage/playback` | signage の現在再生状況を受信 (`{playlistId, currentItemId, looped}`)。`is_active` 切替・`play_count++`・古い playlist の解放を行う |
 | POST | `/api/signage/refresh` | 上流 fetch を即時実行 |
