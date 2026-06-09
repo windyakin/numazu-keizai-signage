@@ -54,6 +54,8 @@ signage/
 - 記事が一巡したら `RankingSlide` を `VITE_RANKING_DURATION_SEC`（デフォルト16秒）表示し、記事の先頭に戻る。
 - タイマーは `setTimeout` を 1 本だけ保持し、`scheduleNext(seconds)` で使い回す。`setInterval` は使わない（スライド種別ごとに尺が違うため）。
 - プレイリストの再取得はループが先頭に戻った瞬間（wrap-around 検知）に `fetchNextPlaylist()` を発火し、結果は `pendingPlaylist` に保留して**次のループ完了時**に `playlistItems` へ反映する。再生中のループ構成は変えない。
+- `fetchPlaylist()` のレスポンスには `id` が含まれており、現在再生中のプレイリスト ID は `currentPlaylistId` に、保留中は `pendingPlaylistId` に保持する。スワップ時に両者を入れ替える。
+- スライド遷移ごとに `reportPlayback({playlistId, currentItemId, looped})` で edge に POST する。これにより edge は signage が今どのプレイリストを再生中かを把握し、未再生（古い）プレイリストの media_cache を sweep しないようになる。`looped=true` は wrap-around を検知したが pending が無く同一プレイリストを再ループする場合に送る（edge 側で `play_count` がインクリメントされる）。failure は silent で signage の描画は止めない。
 - `playlistItems` が空のときだけ別途 30秒間隔の `retryWhenEmpty()` が走り、edge から取得を試みる。items がある状態の fetch 失敗は silent ignore で既存プレイリストを維持する。
 - 記事・ランキングは playlist と独立した `setInterval`（`VITE_PLAYLIST_REFRESH_INTERVAL_MIN`、既定10分）で `refreshArticlesAndRankings()` が走る。
 - `<Transition name="slide" mode="out-in">` で CSS フェード。遷移時間は `--transition-duration`。
