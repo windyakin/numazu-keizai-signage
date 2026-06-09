@@ -1,3 +1,4 @@
+import { Prisma } from "@prisma/client";
 import { prisma } from "../db.js";
 import { createStorageClient, uploadObject } from "../storage.js";
 
@@ -67,14 +68,25 @@ export async function cacheArticleImage(
     return null;
   }
 
-  const created = await prisma.mediaFile.create({
-    data: {
-      storageKey,
-      mimeType,
-      type: "ARTICLE",
-      originalName: sourceFilename,
-      sizeBytes: BigInt(buffer.byteLength),
-    },
-  });
-  return created.id;
+  try {
+    const created = await prisma.mediaFile.create({
+      data: {
+        storageKey,
+        mimeType,
+        type: "ARTICLE",
+        originalName: sourceFilename,
+        sizeBytes: BigInt(buffer.byteLength),
+      },
+    });
+    return created.id;
+  } catch (e) {
+    // articles / rankings ジョブが同じ記事画像 (storageKey 共有) を並行処理すると
+    // findUnique をすり抜けて両方が create に到達しうる。ユニーク制約違反 (P2002) は
+    // 「他方が先に作成した」だけなので、既存レコードを引き直して返す。
+    if (e instanceof Prisma.PrismaClientKnownRequestError && e.code === "P2002") {
+      const existing = await prisma.mediaFile.findUnique({ where: { storageKey } });
+      if (existing) return existing.id;
+    }
+    throw e;
+  }
 }
