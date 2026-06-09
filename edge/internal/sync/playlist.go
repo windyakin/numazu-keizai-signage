@@ -20,14 +20,14 @@ type PlaylistSyncer struct {
 }
 
 func NewPlaylistSyncer(
-	baseURL string,
+	baseURL, token string,
 	playlists *store.Playlists,
 	items *store.PlaylistItems,
 	media *MediaSyncer,
 	interval time.Duration,
 ) *PlaylistSyncer {
 	return &PlaylistSyncer{
-		up:        newUpstream(baseURL),
+		up:        newUpstream(baseURL, token),
 		playlists: playlists,
 		items:     items,
 		media:     media,

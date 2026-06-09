@@ -16,9 +16,9 @@ type RankingsSyncer struct {
 	interval time.Duration
 }
 
-func NewRankingsSyncer(baseURL string, rankings *store.Rankings, media *MediaSyncer, interval time.Duration) *RankingsSyncer {
+func NewRankingsSyncer(baseURL, token string, rankings *store.Rankings, media *MediaSyncer, interval time.Duration) *RankingsSyncer {
 	return &RankingsSyncer{
-		up:       newUpstream(baseURL),
+		up:       newUpstream(baseURL, token),
 		rankings: rankings,
 		media:    media,
 		interval: interval,

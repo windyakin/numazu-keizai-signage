@@ -40,9 +40,10 @@ type MediaSyncer struct {
 	client         *http.Client
 	trigger        chan struct{}
 	upstreamAPIURL string
+	token          string
 }
 
-func NewMediaSyncer(media *store.Media, playlists *store.Playlists, mediaDir string, interval time.Duration, upstreamAPIURL string) *MediaSyncer {
+func NewMediaSyncer(media *store.Media, playlists *store.Playlists, mediaDir string, interval time.Duration, upstreamAPIURL, token string) *MediaSyncer {
 	return &MediaSyncer{
 		media:          media,
 		playlists:      playlists,
@@ -51,6 +52,7 @@ func NewMediaSyncer(media *store.Media, playlists *store.Playlists, mediaDir str
 		client:         &http.Client{Timeout: 60 * time.Second},
 		trigger:        make(chan struct{}, 1),
 		upstreamAPIURL: strings.TrimRight(upstreamAPIURL, "/"),
+		token:          token,
 	}
 }
 
@@ -168,6 +170,9 @@ func (m *MediaSyncer) fetch(ctx context.Context, storageKey, mimeType string) (s
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, downloadURL, nil)
 	if err != nil {
 		return "", err
+	}
+	if m.token != "" {
+		req.Header.Set("Authorization", "Bearer "+m.token)
 	}
 	resp, err := m.client.Do(req)
 	if err != nil {

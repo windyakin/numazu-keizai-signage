@@ -12,12 +12,14 @@ import (
 
 type upstream struct {
 	baseURL string
+	token   string
 	client  *http.Client
 }
 
-func newUpstream(baseURL string) *upstream {
+func newUpstream(baseURL, token string) *upstream {
 	return &upstream{
 		baseURL: strings.TrimRight(baseURL, "/"),
+		token:   token,
 		client:  &http.Client{Timeout: 30 * time.Second},
 	}
 }
@@ -28,6 +30,9 @@ func (u *upstream) getJSON(ctx context.Context, path string, out any) error {
 		return err
 	}
 	req.Header.Set("Accept", "application/json")
+	if u.token != "" {
+		req.Header.Set("Authorization", "Bearer "+u.token)
+	}
 
 	resp, err := u.client.Do(req)
 	if err != nil {

@@ -11,6 +11,7 @@ import (
 
 type Config struct {
 	UpstreamAPIURL  string
+	SignageAPIToken string
 	PollIntervalMin int
 	MediaDir        string
 	DBPath          string
@@ -43,6 +44,7 @@ func Load() (*Config, error) {
 
 	return &Config{
 		UpstreamAPIURL:  upstream,
+		SignageAPIToken: os.Getenv("SIGNAGE_API_TOKEN"),
 		PollIntervalMin: envInt("POLL_INTERVAL_MIN", 5),
 		MediaDir:        mediaDir,
 		DBPath:          dbPath,

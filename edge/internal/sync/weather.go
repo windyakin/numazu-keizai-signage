@@ -15,9 +15,9 @@ type WeatherSyncer struct {
 	interval time.Duration
 }
 
-func NewWeatherSyncer(baseURL string, weather *store.Weather, interval time.Duration) *WeatherSyncer {
+func NewWeatherSyncer(baseURL, token string, weather *store.Weather, interval time.Duration) *WeatherSyncer {
 	return &WeatherSyncer{
-		up:       newUpstream(baseURL),
+		up:       newUpstream(baseURL, token),
 		weather:  weather,
 		interval: interval,
 	}

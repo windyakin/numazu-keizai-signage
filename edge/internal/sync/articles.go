@@ -16,9 +16,9 @@ type ArticlesSyncer struct {
 	interval time.Duration
 }
 
-func NewArticlesSyncer(baseURL string, articles *store.Articles, media *MediaSyncer, interval time.Duration) *ArticlesSyncer {
+func NewArticlesSyncer(baseURL, token string, articles *store.Articles, media *MediaSyncer, interval time.Duration) *ArticlesSyncer {
 	return &ArticlesSyncer{
-		up:       newUpstream(baseURL),
+		up:       newUpstream(baseURL, token),
 		articles: articles,
 		media:    media,
 		interval: interval,

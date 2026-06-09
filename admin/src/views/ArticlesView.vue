@@ -23,11 +23,12 @@ import Thumb from '../components/common/Thumb.vue'
 setPageMeta({ title: 'ニュース' })
 
 const BASE_URL = import.meta.env.VITE_API_BASE_URL || '/api/admin'
-const SIGNAGE_BASE = BASE_URL.replace(/\/admin\/?$/, '/signage')
 
+// signage 経由 (/api/signage/media) は edge ↔ api 認証で保護されたため、
+// ブラウザからは未保護な admin 経路で storageKey を引いてサムネ表示する。
 function articleImageUrl(imageKey: string | null): string | null {
   if (!imageKey) return null
-  return `${SIGNAGE_BASE}/media?key=${encodeURIComponent(imageKey)}`
+  return `${BASE_URL}/media/by-key?key=${encodeURIComponent(imageKey)}`
 }
 
 const articlesStore = useArticlesStore()

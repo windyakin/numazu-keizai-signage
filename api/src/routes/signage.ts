@@ -3,6 +3,7 @@ import QRCode from "qrcode";
 import { prisma } from "../db.js";
 import { createStorageClient, getObject } from "../storage.js";
 import { buildArticleUrl, qrKeyForUrl } from "../qr.js";
+import { signageAuth } from "../middleware/signageAuth.js";
 
 // Schemas
 
@@ -173,6 +174,10 @@ const getQrcodeRoute = createRoute({
 // Handlers
 
 export const signageApp = new OpenAPIHono();
+
+// edge からのリクエストは共有シークレットの Bearer トークンで認証する。
+// articles/rankings/weather/playlist/qrcode/media を一括で保護する。
+signageApp.use("/api/signage/*", signageAuth);
 
 signageApp.openapi(getArticlesRoute, async (c) => {
   const articles = await prisma.article.findMany({

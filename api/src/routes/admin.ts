@@ -309,6 +309,27 @@ const getMediaContentRoute = createRoute({
   },
 });
 
+// storageKey 指定でストレージ実体を返す admin 用プロキシ。
+// signage 側の /api/signage/media は edge ↔ api 認証で保護されたため、
+// admin 画面 (ブラウザ) からの記事サムネ表示はこの未保護な admin 経路を使う。
+const getMediaByKeyRoute = createRoute({
+  method: "get",
+  path: "/api/admin/media/by-key",
+  request: {
+    query: z.object({ key: z.string().min(1) }),
+  },
+  responses: {
+    200: {
+      content: { "application/octet-stream": { schema: z.any() } },
+      description: "ストレージオブジェクト",
+    },
+    404: {
+      content: { "application/json": { schema: ErrorResponseSchema } },
+      description: "未発見",
+    },
+  },
+});
+
 // Playlist routes
 
 const getPlaylistsRoute = createRoute({
@@ -789,6 +810,20 @@ adminApp.openapi(getMediaContentRoute, async (c) => {
   } catch (err) {
     const message = err instanceof Error ? err.message : "fetch failed";
     return c.json({ error: message }, 502);
+  }
+});
+
+adminApp.openapi(getMediaByKeyRoute, async (c) => {
+  const { key } = c.req.valid("query");
+  const bucket = process.env.STORAGE_BUCKET ?? "signage-media";
+  try {
+    const { body, contentType } = await getObject(createStorageClient(), bucket, key);
+    c.header("Content-Type", contentType);
+    c.header("Cache-Control", "private, max-age=3600");
+    return c.body(body, 200);
+  } catch (e) {
+    console.error(`[admin/media/by-key] key=${key} bucket=${bucket}`, e);
+    return c.json({ error: "not found" }, 404);
   }
 });
 
