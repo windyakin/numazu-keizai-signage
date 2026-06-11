@@ -29,9 +29,9 @@ jobs:
           - name: api
             dockerfile: api/Dockerfile
             context: ./api
-          - name: signage
-            dockerfile: signage/Dockerfile
-            context: ./signage
+          - name: admin
+            dockerfile: admin/Dockerfile
+            context: ./admin
 
     steps:
       - name: Checkout repository
