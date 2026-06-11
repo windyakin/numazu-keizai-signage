@@ -1,0 +1,95 @@
+name: Release edge Binaries
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - goos: linux
+            goarch: amd64
+          - goos: linux
+            goarch: arm64
+          - goos: linux
+            goarch: arm
+            goarm: '7'
+          - goos: windows
+            goarch: amd64
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: edge/.go-version
+          cache-dependency-path: edge/go.sum
+
+      - name: Build binary
+        working-directory: edge
+        env:
+          CGO_ENABLED: '0'
+          GOOS: ${{ matrix.goos }}
+          GOARCH: ${{ matrix.goarch }}
+          GOARM: ${{ matrix.goarm }}
+        run: |
+          suffix=""
+          if [ "$GOOS" = "windows" ]; then suffix=".exe"; fi
+          arch="$GOARCH"
+          if [ "$GOARCH" = "arm" ]; then arch="armv${GOARM}"; fi
+          out="edge_${GOOS}_${arch}${suffix}"
+          echo "OUT_NAME=$out" >> "$GITHUB_ENV"
+          go build -trimpath -ldflags="-s -w" -o "dist/$out" ./cmd/edge
+
+      - name: Package archive
+        working-directory: edge/dist
+        run: |
+          base="${OUT_NAME%.exe}"
+          if [ "${{ matrix.goos }}" = "windows" ]; then
+            zip "${base}.zip" "$OUT_NAME"
+            echo "ASSET=edge/dist/${base}.zip" >> "$GITHUB_ENV"
+          else
+            tar -czf "${base}.tar.gz" "$OUT_NAME"
+            echo "ASSET=edge/dist/${base}.tar.gz" >> "$GITHUB_ENV"
+          fi
+
+      - name: Upload workflow artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ env.OUT_NAME }}
+          path: ${{ env.ASSET }}
+
+  release:
+    needs: build
+    if: startsWith(github.ref, 'refs/tags/')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+          merge-multiple: true
+
+      - name: Create or update GitHub Release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG: ${{ github.ref_name }}
+        run: |
+          if gh release view "$TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            gh release upload "$TAG" artifacts/* --repo "$GITHUB_REPOSITORY" --clobber
+          else
+            gh release create "$TAG" artifacts/* --repo "$GITHUB_REPOSITORY" \
+              --title "$TAG" --generate-notes
+          fi
