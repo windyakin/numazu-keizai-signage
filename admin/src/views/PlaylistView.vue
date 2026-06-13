@@ -302,7 +302,6 @@ function openWizard() {
 function toPlaylistMediaFile(m: MediaFile): PlaylistMediaFile {
   return {
     id: m.id,
-    url: m.url,
     mimeType: m.mimeType,
     originalName: m.originalName,
   }

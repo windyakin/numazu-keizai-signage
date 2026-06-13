@@ -9,7 +9,6 @@ import {
   deleteObject,
   getObject,
   uploadObject,
-  getPublicUrl,
 } from "../storage.js";
 import { buildArticleUrl } from "../qr.js";
 
@@ -81,7 +80,6 @@ const ErrorResponseSchema = z.object({
 const MediaFileSchema = z.object({
   id: z.string(),
   storageKey: z.string(),
-  url: z.string(),
   mimeType: z.string(),
   type: z.enum(["IMAGE", "VIDEO", "ARTICLE"]),
   originalName: z.string(),
@@ -123,7 +121,6 @@ const PlaylistItemSchema = z.object({
   mediaFile: z
     .object({
       id: z.string(),
-      url: z.string(),
       mimeType: z.string(),
       originalName: z.string(),
     })
@@ -609,7 +606,6 @@ function serializeMedia(f: MediaRow) {
   return {
     id: f.id,
     storageKey: f.storageKey,
-    url: getPublicUrl(f.storageKey),
     mimeType: f.mimeType,
     type: f.type,
     originalName: f.originalName,
@@ -748,7 +744,6 @@ adminApp.openapi(uploadMediaRoute, async (c) => {
       {
         id: record.id,
         storageKey: record.storageKey,
-        url: getPublicUrl(record.storageKey),
         mimeType: record.mimeType,
         type: record.type,
         originalName: record.originalName,
@@ -844,7 +839,7 @@ function serializePlaylistItem(item: {
     durationSec: item.durationSec,
     isFullscreen: item.isFullscreen,
     mediaFile: item.mediaFile
-      ? { id: item.mediaFile.id, url: getPublicUrl(item.mediaFile.storageKey), mimeType: item.mediaFile.mimeType, originalName: item.mediaFile.originalName }
+      ? { id: item.mediaFile.id, mimeType: item.mediaFile.mimeType, originalName: item.mediaFile.originalName }
       : null,
   };
 }

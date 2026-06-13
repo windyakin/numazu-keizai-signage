@@ -4,7 +4,6 @@ export type PlaylistItemType = 'ARTICLE_LATEST' | 'ARTICLE_RANDOM' | 'RANKING' |
 
 export interface PlaylistMediaFile {
   id: string
-  url: string
   mimeType: string
   originalName: string
 }
