@@ -49,11 +49,6 @@ export async function getObject(
   };
 }
 
-export function getPublicUrl(storageKey: string): string {
-  const base = process.env.STORAGE_PUBLIC_BASE_URL ?? "";
-  return `${base.replace(/\/$/, "")}/${storageKey}`;
-}
-
 export async function deleteObject(
   client: S3Client,
   bucket: string,

@@ -163,6 +163,11 @@ function cancelName() {
   editingName.value = false
 }
 
+function onNameKeydown(e: KeyboardEvent) {
+  if (e.key === 'Enter') commitName()
+  else if (e.key === 'Escape') cancelName()
+}
+
 // --- Buffered mutations ---
 
 function onReorder(event: { value: EditableItem[] }) {
@@ -297,7 +302,6 @@ function openWizard() {
 function toPlaylistMediaFile(m: MediaFile): PlaylistMediaFile {
   return {
     id: m.id,
-    url: m.url,
     mimeType: m.mimeType,
     originalName: m.originalName,
   }
@@ -416,8 +420,7 @@ function formatDuration(sec: number): string {
           ref="nameInputRef"
           v-model="draftName"
           class="flex-1 title-input"
-          @keydown.enter="commitName"
-          @keydown.escape="cancelName"
+          @keydown="onNameKeydown"
           @blur="commitName"
         />
         <h2

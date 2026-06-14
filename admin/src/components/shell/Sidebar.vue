@@ -36,6 +36,7 @@ const items = computed<NavItem[]>(() => [
   { label: 'メディアライブラリ', icon: 'pi pi-images', route: '/media' },
   { label: 'プレイリスト', icon: 'pi pi-list', route: '/playlists' },
   { label: 'ニュース', icon: 'pi pi-file', route: '/articles' },
+  { label: '天気', icon: 'pi pi-cloud', route: '/weather' },
 ])
 
 function isActive(itemRoute: string): boolean {
@@ -73,7 +74,7 @@ function isActive(itemRoute: string): boolean {
     </nav>
 
     <div class="footer">
-      <Avatar :label="userInitial" shape="circle" />
+      <Avatar :label="userInitial" shape="circle" pt:root:class="flex-shrink-0" />
       <div class="flex flex-column user-meta">
         <span class="text-sm font-semibold white-space-nowrap">{{ displayName }}</span>
         <span class="text-xs text-color-secondary white-space-nowrap">{{ secondaryLine }}</span>
