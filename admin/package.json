@@ -10,7 +10,7 @@
   },
   "dependencies": {
     "@primeuix/themes": "^2.0.0",
-    "pinia": "^2.3.0",
+    "pinia": "^3.0.0",
     "primeflex": "^4.0.0",
     "primeicons": "^7.0.0",
     "primevue": "^4.0.0",
