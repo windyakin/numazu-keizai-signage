@@ -1,4 +1,4 @@
-import { Prisma } from "@prisma/client";
+import { Prisma } from "../generated/prisma/client.js";
 import { prisma } from "../db.js";
 import { createStorageClient, uploadObject } from "../storage.js";
 

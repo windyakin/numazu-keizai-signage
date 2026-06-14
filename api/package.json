@@ -17,17 +17,21 @@
     "@hono/oidc-auth": "^1.8.3",
     "@hono/swagger-ui": "^0.5.0",
     "@hono/zod-openapi": "^0.19.0",
-    "@prisma/client": "^6.5.0",
+    "@prisma/adapter-pg": "^7.8.0",
+    "@prisma/client": "^7.0.0",
+    "dotenv": "^17.4.2",
     "fast-xml-parser": "^5.7.2",
     "hono": "^4.7.0",
     "node-html-parser": "^7.1.0",
+    "pg": "^8.21.0",
     "qrcode": "^1.5.4",
     "zod": "^3.24.0"
   },
   "devDependencies": {
     "@types/node": "^22.13.0",
+    "@types/pg": "^8.20.0",
     "@types/qrcode": "^1.5.6",
-    "prisma": "^6.5.0",
+    "prisma": "^7.0.0",
     "tsx": "^4.19.0",
     "typescript": "^5.8.0"
   }

@@ -2,3 +2,6 @@ node_modules
 dist
 .env
 .chrome-profile
+
+# Prisma generated client (prisma-client generator output)
+api/src/generated
