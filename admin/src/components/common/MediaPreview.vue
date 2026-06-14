@@ -121,8 +121,9 @@ function formatDate(iso: string): string {
   inset: 0;
   background: rgba(0, 0, 0, 0.88);
   z-index: 1099;
-  display: grid;
-  place-items: center;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   padding: 24px 364px 24px 24px;
 }
 

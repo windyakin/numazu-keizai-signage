@@ -67,6 +67,22 @@ const RankingsResponseSchema = z.object({
   fetchedAt: z.string().nullable(),
 });
 
+const WeatherDaySchema = z.object({
+  date: z.string(),
+  dayOffset: z.number(),
+  weatherCode: z.number(), // 気象庁 天気予報用テロップ番号
+  description: z.string(),
+  tempMin: z.number().nullable(),
+  tempMax: z.number().nullable(),
+  tempCurrent: z.number().nullable(), // アメダス現在気温（今日のみ）
+  pop: z.number(),
+});
+
+const WeatherResponseSchema = z.object({
+  days: z.array(WeatherDaySchema),
+  fetchedAt: z.string().nullable(),
+});
+
 const RefreshResponseSchema = z.object({
   fetched: z.number(),
 });
@@ -179,6 +195,17 @@ const getRankingsRoute = createRoute({
     200: {
       content: { "application/json": { schema: RankingsResponseSchema } },
       description: "管理用アクセスランキング",
+    },
+  },
+});
+
+const getWeatherRoute = createRoute({
+  method: "get",
+  path: "/api/admin/weather",
+  responses: {
+    200: {
+      content: { "application/json": { schema: WeatherResponseSchema } },
+      description: "管理用天気予報",
     },
   },
 });
@@ -554,6 +581,28 @@ adminApp.openapi(getRankingsRoute, async (c) => {
       rank: r.rank,
       start: r.article.start.toISOString(),
       articleUrl: buildArticleUrl(r.articleId),
+    })),
+    fetchedAt,
+  });
+});
+
+adminApp.openapi(getWeatherRoute, async (c) => {
+  const days = await prisma.weatherForecast.findMany({
+    orderBy: { dayOffset: "asc" },
+  });
+
+  const fetchedAt = days.length > 0 ? days[0].fetchedAt.toISOString() : null;
+
+  return c.json({
+    days: days.map((d) => ({
+      date: d.date,
+      dayOffset: d.dayOffset,
+      weatherCode: d.weatherCode,
+      description: d.description,
+      tempMin: d.tempMin,
+      tempMax: d.tempMax,
+      tempCurrent: d.tempCurrent,
+      pop: d.pop,
     })),
     fetchedAt,
   });
