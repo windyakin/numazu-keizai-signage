@@ -5,7 +5,6 @@ const BASE_URL = import.meta.env.VITE_API_BASE_URL || '/api/admin'
 export interface MediaFile {
   id: string
   storageKey: string
-  url: string
   mimeType: string
   type: 'IMAGE' | 'VIDEO'
   originalName: string
