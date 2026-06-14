@@ -73,7 +73,7 @@ function isActive(itemRoute: string): boolean {
     </nav>
 
     <div class="footer">
-      <Avatar :label="userInitial" shape="circle" />
+      <Avatar :label="userInitial" shape="circle" pt:root:class="flex-shrink-0" />
       <div class="flex flex-column user-meta">
         <span class="text-sm font-semibold white-space-nowrap">{{ displayName }}</span>
         <span class="text-xs text-color-secondary white-space-nowrap">{{ secondaryLine }}</span>
