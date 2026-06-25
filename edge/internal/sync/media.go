@@ -73,6 +73,28 @@ func (m *MediaSyncer) trig() {
 	}
 }
 
+// VerifyReady checks all ready entries for missing or empty local files and
+// resets broken ones to pending so they are re-downloaded.
+func (m *MediaSyncer) VerifyReady(ctx context.Context) (int, error) {
+	entries, err := m.media.ListReady(ctx)
+	if err != nil {
+		return 0, err
+	}
+	reset := 0
+	for _, e := range entries {
+		abs := filepath.Join(m.mediaDir, filepath.FromSlash(e.LocalPath))
+		info, err := os.Stat(abs)
+		if err != nil || info.Size() == 0 {
+			if resetErr := m.media.ResetToPending(ctx, e.StorageKey); resetErr != nil {
+				log.Printf("media verify: reset %s: %v", e.StorageKey, resetErr)
+				continue
+			}
+			reset++
+		}
+	}
+	return reset, nil
+}
+
 // Run blocks until ctx is cancelled. Drains on startup, on trigger, and on ticker.
 func (m *MediaSyncer) Run(ctx context.Context) {
 	m.drain(ctx)
@@ -204,7 +226,8 @@ func (m *MediaSyncer) fetch(ctx context.Context, storageKey, mimeType string) (s
 	if err != nil {
 		return "", err
 	}
-	if _, err := io.Copy(f, resp.Body); err != nil {
+	n, err := io.Copy(f, resp.Body)
+	if err != nil {
 		f.Close()
 		os.Remove(tmpPath)
 		return "", err
@@ -212,6 +235,10 @@ func (m *MediaSyncer) fetch(ctx context.Context, storageKey, mimeType string) (s
 	if err := f.Close(); err != nil {
 		os.Remove(tmpPath)
 		return "", err
+	}
+	if n == 0 {
+		os.Remove(tmpPath)
+		return "", fmt.Errorf("empty response body")
 	}
 	if err := os.Rename(tmpPath, absPath); err != nil {
 		os.Remove(tmpPath)

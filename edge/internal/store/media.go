@@ -140,6 +140,40 @@ func (m *Media) ListOrphans(ctx context.Context) ([]MediaEntry, error) {
 	return out, rows.Err()
 }
 
+// ListReady returns all entries with status = 'ready'.
+func (m *Media) ListReady(ctx context.Context) ([]MediaEntry, error) {
+	rows, err := m.db.QueryContext(ctx, `
+		SELECT storage_key, local_path, mime_type, status, retries
+		FROM media_cache
+		WHERE status = ?
+	`, MediaReady)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var out []MediaEntry
+	for rows.Next() {
+		var e MediaEntry
+		if err := rows.Scan(&e.StorageKey, &e.LocalPath, &e.MimeType, &e.Status, &e.Retries); err != nil {
+			return nil, err
+		}
+		out = append(out, e)
+	}
+	return out, rows.Err()
+}
+
+// ResetToPending sets the entry back to pending with retries = 0 so it will be
+// re-downloaded on the next drain cycle.
+func (m *Media) ResetToPending(ctx context.Context, storageKey string) error {
+	_, err := m.db.ExecContext(ctx, `
+		UPDATE media_cache
+		SET status = ?, retries = 0, local_path = '', downloaded_at = NULL
+		WHERE storage_key = ?
+	`, MediaPending, storageKey)
+	return err
+}
+
 func (m *Media) Delete(ctx context.Context, storageKey string) error {
 	_, err := m.db.ExecContext(ctx, `DELETE FROM media_cache WHERE storage_key = ?`, storageKey)
 	return err

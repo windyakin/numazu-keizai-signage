@@ -45,6 +45,13 @@ func main() {
 	weather := store.NewWeather(db)
 
 	mediaSyncer := sync.NewMediaSyncer(media, playlists, cfg.MediaDir, 30*time.Second, cfg.UpstreamAPIURL, cfg.SignageAPIToken)
+
+	if n, err := mediaSyncer.VerifyReady(ctx); err != nil {
+		log.Printf("media verify: %v", err)
+	} else if n > 0 {
+		log.Printf("media verify: reset %d broken entries to pending", n)
+	}
+
 	articlesSyncer := sync.NewArticlesSyncer(cfg.UpstreamAPIURL, cfg.SignageAPIToken, articles, mediaSyncer, interval)
 	rankingsSyncer := sync.NewRankingsSyncer(cfg.UpstreamAPIURL, cfg.SignageAPIToken, rankings, mediaSyncer, interval)
 	playlistSyncer := sync.NewPlaylistSyncer(cfg.UpstreamAPIURL, cfg.SignageAPIToken, playlists, playlistItems, mediaSyncer, interval)
