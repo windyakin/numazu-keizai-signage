@@ -187,8 +187,13 @@ function descParts(desc: string): { text?: string; nochi?: boolean }[] {
   min-height: 0;
 }
 
-.weather-slide__main > * {
-  flex: 1 1 0;
+.weather-slide__feature-card {
+  flex: 0 0 30%;
+  min-width: 0;
+}
+
+.weather-slide__week {
+  flex: 0 0 40%;
   min-width: 0;
 }
 
