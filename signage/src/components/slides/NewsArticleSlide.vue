@@ -32,16 +32,19 @@ const formattedDate = computed(() => {
       />
     </div>
     <div class="news-slide__info-pane">
-      <div class="news-slide__info-inner">
-        <time class="news-slide__date" :datetime="article.start">
-          {{ formattedDate }}
-        </time>
-        <h2 class="news-slide__title">{{ article.title }}</h2>
-        <p v-if="article.description" class="news-slide__description">
-          {{ article.description }}
-        </p>
-        <div v-if="article.qrUrl" class="news-slide__qr">
-          <span class="news-slide__qr-label">続きはこちらから</span>
+      <div class="news-slide__info-upper">
+        <div class="news-slide__info-inner">
+          <time class="news-slide__date" :datetime="article.start">
+            {{ formattedDate }}
+          </time>
+          <h2 class="news-slide__title">{{ article.title }}</h2>
+          <p v-if="article.description" class="news-slide__description">
+            {{ article.description }}
+          </p>
+        </div>
+      </div>
+      <div v-if="article.qrUrl" class="news-slide__info-lower">
+        <div class="news-slide__qr">
           <img :src="article.qrUrl" alt="記事のQRコード" class="news-slide__qr-image" />
         </div>
       </div>
@@ -62,9 +65,7 @@ const formattedDate = computed(() => {
   overflow: hidden;
 }
 
-/* QR コードをタイトル・説明の下に右寄せで配置 */
 .news-slide__qr {
-  margin-top: 32px;
   display: flex;
   align-items: center;
   justify-content: flex-end;
@@ -73,7 +74,7 @@ const formattedDate = computed(() => {
 
 .news-slide__qr-image {
   display: block;
-  width: 8vmax;
+  width: 13vmax;
   padding: 1vmin;
   background: #fff;
   border-radius: 0.6vw;
@@ -106,13 +107,27 @@ const formattedDate = computed(() => {
   flex: 1;
   background: var(--color-primary-dark);
   display: flex;
-  align-items: center;
-  justify-content: start;
+  flex-direction: column;
   padding: var(--slide-padding-x);
+}
+
+.news-slide__info-upper {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  min-height: 0;
 }
 
 .news-slide__info-inner {
   width: 100%;
+}
+
+.news-slide__info-lower {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  padding-top: var(--slide-padding-x);
 }
 
 .news-slide__date {
