@@ -33,8 +33,8 @@ const userInitial = computed(() => displayName.value.charAt(0).toUpperCase())
 
 const items = computed<NavItem[]>(() => [
   { label: 'ダッシュボード', icon: 'pi pi-th-large', route: '/' },
-  { label: 'メディアライブラリ', icon: 'pi pi-images', route: '/media' },
   { label: 'プレイリスト', icon: 'pi pi-list', route: '/playlists' },
+  { label: 'メディアライブラリ', icon: 'pi pi-images', route: '/media' },
   { label: 'ニュース', icon: 'pi pi-file', route: '/articles' },
   { label: '天気', icon: 'pi pi-cloud', route: '/weather' },
 ])
@@ -98,7 +98,9 @@ function isActive(itemRoute: string): boolean {
 .sidebar {
   display: flex;
   flex-direction: column;
-  height: 100%;
+  height: 100vh;
+  position: sticky;
+  top: 0;
   background: var(--p-content-background);
   border-right: 1px solid var(--p-content-border-color);
 }
