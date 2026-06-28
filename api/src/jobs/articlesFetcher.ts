@@ -51,7 +51,7 @@ export async function fetchArticles(): Promise<number> {
       "Content-Type": "application/x-www-form-urlencoded; charset=UTF-8",
       "X-Requested-With": "XMLHttpRequest",
     },
-    body: "mode=async&category=headline&limit=15&from=1",
+    body: "mode=async&category=headline&limit=30&from=1",
   });
   if (!response.ok) {
     throw new Error(`Articles fetch failed: ${response.status} ${response.statusText}`);

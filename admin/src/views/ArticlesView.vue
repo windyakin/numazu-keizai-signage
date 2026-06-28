@@ -13,6 +13,8 @@ import Tab from 'primevue/tab'
 import TabPanels from 'primevue/tabpanels'
 import TabPanel from 'primevue/tabpanel'
 import Tag from 'primevue/tag'
+import ToggleSwitch from 'primevue/toggleswitch'
+import SelectButton from 'primevue/selectbutton'
 import { useArticlesStore } from '../stores/useArticlesStore'
 import { useRankingsStore } from '../stores/useRankingsStore'
 import { setPageMeta } from '../composables/useTopbar'
@@ -39,10 +41,21 @@ const confirm = useConfirm()
 const first = ref(0)
 const rows = ref(20)
 
+const filterOptions = [
+  { label: 'すべて', value: false },
+  { label: 'サイネージ表示のみ', value: true },
+]
+
 onMounted(() => {
   articlesStore.loadPage(first.value, rows.value)
   rankingsStore.load()
 })
+
+function onFilterChange(value: boolean) {
+  articlesStore.signageOnly = value
+  first.value = 0
+  articlesStore.loadPage(first.value, rows.value)
+}
 
 function onPage(event: DataTablePageEvent) {
   first.value = event.first
@@ -94,6 +107,19 @@ function refreshRankings() {
   })
 }
 
+async function onToggleHidden(id: string, hidden: boolean) {
+  try {
+    await articlesStore.toggleHidden(id, hidden)
+    toast.add({
+      severity: 'success',
+      summary: hidden ? '記事を非表示にしました' : '記事を表示に戻しました',
+      life: 2000,
+    })
+  } catch (e) {
+    toast.add({ severity: 'error', summary: '更新失敗', detail: String(e), life: 5000 })
+  }
+}
+
 function rankSeverity(rank: number): 'success' | 'info' | 'warn' | 'secondary' {
   if (rank === 1) return 'warn'
   if (rank <= 3) return 'success'
@@ -134,6 +160,15 @@ function rankSeverity(rank: number): 'success' | 'info' | 'warn' | 'secondary' {
                 取得済み <strong class="tabular-nums">{{ articlesStore.total }}</strong> 件
               </span>
               <div class="flex-grow-1" />
+              <SelectButton
+                :model-value="articlesStore.signageOnly"
+                :options="filterOptions"
+                option-label="label"
+                option-value="value"
+                :allow-empty="false"
+                size="small"
+                @update:model-value="onFilterChange"
+              />
               <Button
                 label="再取得"
                 icon="pi pi-refresh"
@@ -146,7 +181,7 @@ function rankSeverity(rank: number): 'success' | 'info' | 'warn' | 'secondary' {
 
             <div class="description mb-3">
               <span>
-                このうち最新15件がランダムに選ばれてサイネージに配信されます。
+                このうち非表示でない最新15件がランダムに選ばれてサイネージに配信されます。
               </span>
             </div>
 
@@ -155,12 +190,13 @@ function rankSeverity(rank: number): 'success' | 'info' | 'warn' | 'secondary' {
               :loading="articlesStore.loading"
               data-key="id"
               striped-rows
-              lazy
-              paginator
+              :lazy="!articlesStore.signageOnly"
+              :paginator="!articlesStore.signageOnly"
               :first="first"
               :rows="rows"
               :total-records="articlesStore.total"
               :rows-per-page-options="[20, 50, 100]"
+              :row-class="(data: any) => data.hidden ? 'row-hidden' : ''"
               @page="onPage"
             >
               <template #empty>
@@ -204,6 +240,14 @@ function rankSeverity(rank: number): 'success' | 'info' | 'warn' | 'secondary' {
               <Column field="start" header="公開日時" :style="{ width: '170px' }">
                 <template #body="{ data }">
                   <span class="text-sm tabular-nums">{{ formatDateTime(data.start) }}</span>
+                </template>
+              </Column>
+              <Column header="表示" :style="{ width: '80px', textAlign: 'center' }">
+                <template #body="{ data }">
+                  <ToggleSwitch
+                    :model-value="!data.hidden"
+                    @update:model-value="(val: boolean) => onToggleHidden(data.id, !val)"
+                  />
                 </template>
               </Column>
             </DataTable>
@@ -340,5 +384,9 @@ function rankSeverity(rank: number): 'success' | 'info' | 'warn' | 'secondary' {
   -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
   overflow: hidden;
+}
+
+:deep(.row-hidden) {
+  opacity: 0.45;
 }
 </style>

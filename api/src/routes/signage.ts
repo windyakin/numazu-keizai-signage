@@ -181,6 +181,7 @@ signageApp.use("/api/signage/*", signageAuth);
 
 signageApp.openapi(getArticlesRoute, async (c) => {
   const articles = await prisma.article.findMany({
+    where: { hidden: false },
     orderBy: { start: "desc" },
     take: 15,
     include: { mediaFile: true },

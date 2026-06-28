@@ -21,6 +21,7 @@ const ArticleSchema = z.object({
   description: z.string().nullable(),
   start: z.string(),
   articleUrl: z.string().nullable(),
+  hidden: z.boolean(),
 });
 
 const ArticlesResponseSchema = z.object({
@@ -35,6 +36,10 @@ const PaginationQuerySchema = z.object({
   limit: z.coerce.number().int().min(1).max(100).optional(),
   offset: z.coerce.number().int().min(0).optional(),
   cursor: z.string().optional(),
+  signageOnly: z
+    .enum(["true", "false"])
+    .transform((v) => v === "true")
+    .optional(),
 });
 
 const DEFAULT_PAGE_SIZE = 25;
@@ -236,6 +241,35 @@ const refreshRankingsRoute = createRoute({
     500: {
       content: { "application/json": { schema: ErrorResponseSchema } },
       description: "エラー",
+    },
+  },
+});
+
+const toggleArticleHiddenRoute = createRoute({
+  method: "patch",
+  path: "/api/admin/articles/{id}/hidden",
+  request: {
+    params: z.object({ id: z.string() }),
+    body: {
+      content: {
+        "application/json": {
+          schema: z.object({ hidden: z.boolean() }),
+        },
+      },
+    },
+  },
+  responses: {
+    200: {
+      content: {
+        "application/json": {
+          schema: z.object({ id: z.string(), hidden: z.boolean() }),
+        },
+      },
+      description: "非表示設定更新結果",
+    },
+    404: {
+      content: { "application/json": { schema: ErrorResponseSchema } },
+      description: "記事が見つからない",
     },
   },
 });
@@ -477,6 +511,7 @@ type ArticleRow = {
   id: string;
   title: string;
   description: string | null;
+  hidden: boolean;
   start: Date;
   mediaFile: { storageKey: string } | null;
 };
@@ -487,6 +522,7 @@ function serializeArticle(a: ArticleRow) {
     title: a.title,
     imageKey: a.mediaFile?.storageKey ?? null,
     description: a.description,
+    hidden: a.hidden,
     start: a.start.toISOString(),
     articleUrl: buildArticleUrl(a.id),
   };
@@ -498,7 +534,23 @@ const articleOrderBy = [
 ];
 
 adminApp.openapi(getArticlesRoute, async (c) => {
-  const { limit: rawLimit, offset, cursor } = c.req.valid("query");
+  const { limit: rawLimit, offset, cursor, signageOnly } = c.req.valid("query");
+
+  // signageOnly: サイネージ表示対象（非表示でない最新15件）のみ返す
+  if (signageOnly) {
+    const articles = await prisma.article.findMany({
+      where: { hidden: false },
+      take: 15,
+      orderBy: articleOrderBy,
+      include: { mediaFile: true },
+    });
+    return c.json({
+      articles: articles.map(serializeArticle),
+      total: articles.length,
+      limit: articles.length,
+      offset: 0,
+    });
+  }
 
   // 無指定: 先頭25件のみ（旧形 { articles } で返す）
   if (rawLimit === undefined && offset === undefined && cursor === undefined) {
@@ -616,6 +668,19 @@ adminApp.openapi(refreshArticlesRoute, async (c) => {
     const message = err instanceof Error ? err.message : "Unknown error";
     return c.json({ error: message }, 500);
   }
+});
+
+adminApp.openapi(toggleArticleHiddenRoute, async (c) => {
+  const { id } = c.req.valid("param");
+  const { hidden } = c.req.valid("json");
+
+  const article = await prisma.article.findUnique({ where: { id } });
+  if (!article) {
+    return c.json({ error: "Article not found" }, 404);
+  }
+
+  await prisma.article.update({ where: { id }, data: { hidden } });
+  return c.json({ id, hidden }, 200);
 });
 
 adminApp.openapi(refreshRankingsRoute, async (c) => {

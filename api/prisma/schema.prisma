@@ -15,6 +15,7 @@ model Article {
   start       DateTime
   fetchedAt   DateTime       @default(now())
   description String?
+  hidden      Boolean        @default(false)
   ranking     AccessRanking?
 
   @@index([start])
