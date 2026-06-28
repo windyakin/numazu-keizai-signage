@@ -1,6 +1,8 @@
+import type { Context } from "hono";
 import { createRoute, OpenAPIHono, z } from "@hono/zod-openapi";
 import {
   getAuth,
+  getAuthorizationServer,
   oidcAuthMiddleware,
   processOAuthCallback,
   revokeSession,
@@ -51,14 +53,39 @@ authApp.get("/api/auth/callback", async (c) => {
   return processOAuthCallback(c);
 });
 
-// ログアウト。GET はリンク用 (admin へリダイレクト)、POST は fetch 用。
+// OIDC RP-Initiated Logout (end_session_endpoint) の URL を組み立てる。
+// ローカル Cookie を消すだけだと IdP 側セッションが残り、
+// /api/auth/login 経由で即座に再ログインされてしまう。
+async function idpLogoutUrl(c: Context): Promise<string | null> {
+  try {
+    const as = await getAuthorizationServer(c);
+    const endpoint = as.end_session_endpoint;
+    if (!endpoint) return null;
+
+    const externalUrl = process.env.OIDC_AUTH_EXTERNAL_URL || "";
+    const postLogoutRedirect = `${externalUrl}${adminBaseUrl()}`;
+
+    const url = new URL(endpoint);
+    url.searchParams.set("client_id", process.env.OIDC_CLIENT_ID!);
+    url.searchParams.set("post_logout_redirect_uri", postLogoutRedirect);
+    return url.toString();
+  } catch {
+    return null;
+  }
+}
+
+// ログアウト。GET はリンク用、POST は fetch 用。
+// ローカルセッションを破棄したあと IdP の end_session_endpoint へ
+// リダイレクトし IdP セッションも終了させる。
 authApp.get("/api/auth/logout", async (c) => {
   if (oidcConfigured()) await revokeSession(c);
-  return c.redirect(adminBaseUrl());
+  const idpLogout = oidcConfigured() ? await idpLogoutUrl(c) : null;
+  return c.redirect(idpLogout ?? adminBaseUrl());
 });
 authApp.post("/api/auth/logout", async (c) => {
   if (oidcConfigured()) await revokeSession(c);
-  return c.json({ ok: true });
+  const idpLogout = oidcConfigured() ? await idpLogoutUrl(c) : null;
+  return c.json({ ok: true, redirectTo: idpLogout ?? adminBaseUrl() });
 });
 
 // GET /api/auth/me — フロントの起動時ゲート用。
