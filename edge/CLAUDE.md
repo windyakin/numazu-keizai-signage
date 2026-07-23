@@ -57,6 +57,7 @@ internal/sync/rankings.go        RankingsSyncer（ランキング pull → ranki
 internal/sync/weather.go         WeatherSyncer（天気 pull → weather replace。画像なし）
 internal/sync/playlist.go        PlaylistSyncer（プレイリスト pull → items replace → メディア enqueue → media sweep）
 internal/sync/media.go           MediaSyncer（記事画像 / ランキング画像 / スライドメディアを単一プールでダウンロード・4 並列ワーカー、Sweep で孤児削除）
+internal/sync/heartbeat.go       HeartbeatSyncer（POST /api/signage/heartbeat で上流に死活通知。SIGNAGE_API_TOKEN 未設定時は起動しない）
 ```
 
 ---
@@ -82,10 +83,11 @@ media_cache    (storage_key PK, local_path, mime_type, status, retries, download
 1. `config.Load()` で環境変数を読み込む（`.env` を自動 load）
 2. SQLite open・スキーマ初期化（WAL モード、`busy_timeout=5000ms`、`MaxOpenConns=1`）
 3. `media/` ディレクトリを作成
-4. goroutine 3 本を起動:
+4. goroutine を起動:
    - `MediaSyncer.Run` — pending/failed 画像をダウンロード（ticker 30 秒 + 即時 trigger チャネル）
    - `ArticlesSyncer.Run` — 起動直後に 1 回 fetch、以後 `POLL_INTERVAL_MIN` 間隔
    - `RankingsSyncer.Run` — 同上
+   - `HeartbeatSyncer.Run` — 起動直後に 1 回 + `HEARTBEAT_INTERVAL_SEC` 間隔で上流に死活通知（`SIGNAGE_API_TOKEN` 設定時のみ）
 5. HTTP サーバー起動（chi + CORS ミドルウェア）
 6. SIGINT / SIGTERM で graceful shutdown（5 秒タイムアウト）
 
@@ -144,8 +146,9 @@ CORS: `Access-Control-Allow-Origin: *`（`file://` からの fetch を許可す�
 | 変数名 | 既定値 | 説明 |
 |-------|--------|------|
 | `UPSTREAM_API_URL` | (必須) | 上流 api のベース URL |
-| `SIGNAGE_API_TOKEN` | (任意) | 上流 api 認証用の共有シークレット。設定時のみ全リクエストに `Authorization: Bearer ...` を付与（api 側と同値にする） |
+| `SIGNAGE_API_TOKEN` | (任意) | 上流 api 認証用トークン。admin で発行した**デバイス個別トークン**を設定するのが推奨（api 側がトークンからデバイスを識別する）。旧来の共有シークレットも可だがハートビートは 401 になる。設定時のみ全リクエストに `Authorization: Bearer ...` を付与 |
 | `POLL_INTERVAL_MIN` | `5` | 上流 pull 間隔（分） |
+| `HEARTBEAT_INTERVAL_SEC` | `60` | 上流への死活通知間隔（秒）。トークン未設定時はハートビート自体を起動しない |
 | `MEDIA_DIR` | `<exe dir>/media` | 画像保存先ディレクトリ |
 | `DB_PATH` | `<exe dir>/edge.db` | SQLite ファイルパス |
 | `LISTEN_ADDR` | `127.0.0.1:8080` | HTTP 待ち受けアドレス |

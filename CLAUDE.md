@@ -76,14 +76,18 @@ type ArticlesResponse = {
 | GET | `/api/signage/articles` | キャッシュ済み記事一覧を返す |
 | GET | `/api/signage/rankings` | キャッシュ済みアクセスランキングを返す |
 | GET | `/api/signage/media?key={imageKey}` | S3 オブジェクトキーを指定して画像実体を返す (edge / admin から利用) |
+| POST | `/api/signage/heartbeat` | edge の死活通知。デバイス個別トークン必須。受信時刻を Device.lastHeartbeatAt に記録 |
 | POST | `/api/admin/articles/refresh` | 記事を手動で再取得する（開発用） |
 | POST | `/api/admin/rankings/refresh` | ランキングを手動で再取得する（開発用） |
+| GET | `/api/admin/devices` | デバイス一覧。status (online/offline/unknown) は最終ハートビートからの経過時間で参照時に導出 |
+| POST | `/api/admin/devices` | デバイス登録。平文トークンはこのレスポンスでのみ返す（DB には SHA-256 ハッシュのみ保存） |
+| DELETE | `/api/admin/devices/{id}` | デバイス削除（トークン失効） |
 | GET | `/api/auth/login` | 未ログインなら Auth0 へリダイレクト。ログイン済みなら admin トップへ戻す |
 | GET | `/api/auth/callback` | Auth0 からのリダイレクトを受けてトークン交換・セッション Cookie 発行 |
 | GET/POST | `/api/auth/logout` | セッションを破棄する |
 | GET | `/api/auth/me` | 認証状態を返す（admin 起動時ゲート用） |
 
-`/api/signage/*`（articles / rankings / weather / playlist / qrcode / media）は **`Authorization: Bearer {SIGNAGE_API_TOKEN}` 必須**（edge ↔ api のサーバー間認証）。`SIGNAGE_API_TOKEN` 未設定時は警告ログを出して認証をスキップする（移行用 fail-open）。
+`/api/signage/*`（articles / rankings / weather / playlist / qrcode / media / heartbeat）は **Bearer トークン必須**（edge ↔ api のサーバー間認証）。トークンは 2 種類: (1) **デバイス個別トークン**（admin の `/api/admin/devices` で発行。SHA-256 が `Device.tokenHash` に一致すればそのデバイスとして認証・識別される）、(2) 共有シークレット `SIGNAGE_API_TOKEN`（レガシー・デバイス未登録の edge 用フォールバック）。`heartbeat` のみデバイス個別トークン必須（共有シークレットでは 401）。`SIGNAGE_API_TOKEN` 未設定時は警告ログを出して共有シークレット認証をスキップする（移行用 fail-open。デバイストークンの照合は常に行う）。
 
 `/api/admin/*` は **Auth0 (OIDC) のセッション Cookie で保護**する（`/api/admin/media/by-key` のサムネプロキシ含む）。admin と api は同一オリジンのため Cookie が fetch / XHR / `<img>` すべてに自動付与される。api 側で OIDC 認可コードフローを処理し（`@hono/oidc-auth`）、暗号化 HttpOnly Cookie を発行するサーバーサイド方式（SPA のアクセストークン方式ではない）。`/api/admin/*` のガード (`middleware/adminAuth.ts`) は未認証時に **401** を返す（リダイレクトはログイン起点 `/api/auth/login` のみ）。OIDC env 未設定時は `SIGNAGE_API_TOKEN` 同様の fail-open で認証をスキップする。
 
@@ -152,6 +156,7 @@ FEED_IMAGE_BASE_URL=https://...  # 画像ファイル名に付けるベースURL
 FEED_FETCH_INTERVAL_MIN=30
 ACCESS_URL=https://...           # アクセスランキングのエンドポイントURL
 SIGNAGE_API_TOKEN=...            # edge ↔ api 間のサーバー間認証用の共有シークレット (edge にも同値を設定)
+DEVICE_OFFLINE_THRESHOLD_SEC=180 # デバイスをオフライン判定する最終ハートビートからの経過秒数 (デフォルト 180)
 PORT=3000
 # admin 認証 (Auth0 / OIDC)。未設定の間は admin の認証を fail-open でスキップする
 OIDC_ISSUER=https://<tenant>.auth0.com   # 末尾スラッシュ無し

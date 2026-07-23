@@ -10,12 +10,13 @@ import (
 )
 
 type Config struct {
-	UpstreamAPIURL  string
-	SignageAPIToken string
-	PollIntervalMin int
-	MediaDir        string
-	DBPath          string
-	ListenAddr      string
+	UpstreamAPIURL       string
+	SignageAPIToken      string
+	PollIntervalMin      int
+	HeartbeatIntervalSec int
+	MediaDir             string
+	DBPath               string
+	ListenAddr           string
 }
 
 func Load() (*Config, error) {
@@ -43,12 +44,13 @@ func Load() (*Config, error) {
 	}
 
 	return &Config{
-		UpstreamAPIURL:  upstream,
-		SignageAPIToken: os.Getenv("SIGNAGE_API_TOKEN"),
-		PollIntervalMin: envInt("POLL_INTERVAL_MIN", 5),
-		MediaDir:        mediaDir,
-		DBPath:          dbPath,
-		ListenAddr:      envStr("LISTEN_ADDR", "127.0.0.1:8080"),
+		UpstreamAPIURL:       upstream,
+		SignageAPIToken:      os.Getenv("SIGNAGE_API_TOKEN"),
+		PollIntervalMin:      envInt("POLL_INTERVAL_MIN", 5),
+		HeartbeatIntervalSec: envInt("HEARTBEAT_INTERVAL_SEC", 60),
+		MediaDir:             mediaDir,
+		DBPath:               dbPath,
+		ListenAddr:           envStr("LISTEN_ADDR", "127.0.0.1:8080"),
 	}, nil
 }
 

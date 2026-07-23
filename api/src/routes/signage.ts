@@ -3,7 +3,7 @@ import QRCode from "qrcode";
 import { prisma } from "../db.js";
 import { createStorageClient, getObject } from "../storage.js";
 import { buildArticleUrl, qrKeyForUrl } from "../qr.js";
-import { signageAuth } from "../middleware/signageAuth.js";
+import { signageAuth, type SignageAuthEnv } from "../middleware/signageAuth.js";
 
 // Schemas
 
@@ -153,6 +153,32 @@ const getPlaylistRoute = createRoute({
   },
 });
 
+const HeartbeatRequestSchema = z.object({
+  version: z.string().optional(),
+});
+
+const HeartbeatResponseSchema = z.object({
+  status: z.literal("ok"),
+});
+
+const postHeartbeatRoute = createRoute({
+  method: "post",
+  path: "/api/signage/heartbeat",
+  request: {
+    body: { content: { "application/json": { schema: HeartbeatRequestSchema } } },
+  },
+  responses: {
+    200: {
+      content: { "application/json": { schema: HeartbeatResponseSchema } },
+      description: "ハートビート受理",
+    },
+    401: {
+      content: { "application/json": { schema: z.object({ error: z.string() }) } },
+      description: "デバイストークンでの認証が必要",
+    },
+  },
+});
+
 const getQrcodeRoute = createRoute({
   method: "get",
   path: "/api/signage/qrcode",
@@ -173,7 +199,7 @@ const getQrcodeRoute = createRoute({
 
 // Handlers
 
-export const signageApp = new OpenAPIHono();
+export const signageApp = new OpenAPIHono<SignageAuthEnv>();
 
 // edge からのリクエストは共有シークレットの Bearer トークンで認証する。
 // articles/rankings/weather/playlist/qrcode/media を一括で保護する。
@@ -297,6 +323,28 @@ signageApp.openapi(getPlaylistRoute, async (c) => {
   });
 
   return c.json({ id: playlist.id, items });
+});
+
+// Heartbeat (edge の死活監視)
+//
+// オンライン/オフラインの判定は api 側では行わない。ここでは受信時刻
+// (lastHeartbeatAt) を記録するだけで、状態は admin 側の参照時に
+// 「経過時間 > 閾値」で導出する。共有シークレットや fail-open で
+// 到達したリクエストはデバイスを特定できないため 401 を返す。
+
+signageApp.openapi(postHeartbeatRoute, async (c) => {
+  const device = c.get("device");
+  if (!device) {
+    return c.json({ error: "device token required" }, 401);
+  }
+
+  const { version } = c.req.valid("json");
+  await prisma.device.update({
+    where: { id: device.id },
+    data: { lastHeartbeatAt: new Date(), version: version ?? null },
+  });
+
+  return c.json({ status: "ok" as const }, 200);
 });
 
 // QR code (任意 URL をオンデマンド生成。edge が /api/signage/qrcode?url=... で取得しキャッシュする)

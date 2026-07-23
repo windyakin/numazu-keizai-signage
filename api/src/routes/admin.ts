@@ -1,5 +1,5 @@
 import { createRoute, OpenAPIHono, z } from "@hono/zod-openapi";
-import { randomUUID } from "node:crypto";
+import { createHash, randomBytes, randomUUID } from "node:crypto";
 import { prisma } from "../db.js";
 import { fetchArticles } from "../jobs/articlesFetcher.js";
 import { fetchRankings } from "../jobs/rankingsFetcher.js";
@@ -175,6 +175,24 @@ const CreatePlaylistItemRequestSchema = z.discriminatedUnion("type", [
 const UpdatePlaylistItemRequestSchema = z.object({
   durationSec: z.number().int().positive().nullable().optional(),
   isFullscreen: z.boolean().optional(),
+});
+
+// Device Schemas
+
+const DeviceSchema = z.object({
+  id: z.string(),
+  name: z.string(),
+  status: z.enum(["online", "offline", "unknown"]),
+  lastHeartbeatAt: z.string().nullable(),
+  version: z.string().nullable(),
+  createdAt: z.string(),
+});
+
+const DevicesResponseSchema = z.object({ devices: z.array(DeviceSchema) });
+const CreateDeviceRequestSchema = z.object({ name: z.string().min(1) });
+const CreateDeviceResponseSchema = z.object({
+  device: DeviceSchema,
+  token: z.string(),
 });
 
 // Routes
@@ -499,6 +517,35 @@ const reorderPlaylistItemsRoute = createRoute({
   },
   responses: {
     200: { content: { "application/json": { schema: PlaylistItemsResponseSchema } }, description: "並び替え後のアイテム一覧" },
+    404: { content: { "application/json": { schema: ErrorResponseSchema } }, description: "未発見" },
+  },
+});
+
+// Device routes
+
+const getDevicesRoute = createRoute({
+  method: "get",
+  path: "/api/admin/devices",
+  responses: {
+    200: { content: { "application/json": { schema: DevicesResponseSchema } }, description: "デバイス一覧（status は参照時に導出）" },
+  },
+});
+
+const createDeviceRoute = createRoute({
+  method: "post",
+  path: "/api/admin/devices",
+  request: { body: { content: { "application/json": { schema: CreateDeviceRequestSchema } } } },
+  responses: {
+    201: { content: { "application/json": { schema: CreateDeviceResponseSchema } }, description: "作成したデバイスとトークン（トークンはこのレスポンスでのみ返す）" },
+  },
+});
+
+const deleteDeviceRoute = createRoute({
+  method: "delete",
+  path: "/api/admin/devices/{id}",
+  request: { params: z.object({ id: z.string() }) },
+  responses: {
+    204: { description: "削除完了（トークン失効）" },
     404: { content: { "application/json": { schema: ErrorResponseSchema } }, description: "未発見" },
   },
 });
@@ -1096,4 +1143,64 @@ adminApp.openapi(reorderPlaylistItemsRoute, async (c) => {
     include: { mediaFile: true },
   });
   return c.json({ items: items.map(serializePlaylistItem) }, 200);
+});
+
+// Device handlers
+
+// オフライン判定の閾値。edge のハートビート間隔 (デフォルト 60 秒) の
+// 2〜3 倍にしておき、1 回の欠落でフラップしないようにする。
+const DEFAULT_DEVICE_OFFLINE_THRESHOLD_SEC = 180;
+
+function deviceOfflineThresholdMs(): number {
+  const raw = parseInt(process.env.DEVICE_OFFLINE_THRESHOLD_SEC ?? "", 10);
+  const sec = Number.isFinite(raw) && raw > 0 ? raw : DEFAULT_DEVICE_OFFLINE_THRESHOLD_SEC;
+  return sec * 1000;
+}
+
+type DeviceRow = {
+  id: string;
+  name: string;
+  lastHeartbeatAt: Date | null;
+  version: string | null;
+  createdAt: Date;
+};
+
+function serializeDevice(d: DeviceRow) {
+  // online/offline は保存せず、最終ハートビートからの経過時間で導出する
+  const status = !d.lastHeartbeatAt
+    ? ("unknown" as const)
+    : Date.now() - d.lastHeartbeatAt.getTime() <= deviceOfflineThresholdMs()
+      ? ("online" as const)
+      : ("offline" as const);
+  return {
+    id: d.id,
+    name: d.name,
+    status,
+    lastHeartbeatAt: d.lastHeartbeatAt?.toISOString() ?? null,
+    version: d.version,
+    createdAt: d.createdAt.toISOString(),
+  };
+}
+
+adminApp.openapi(getDevicesRoute, async (c) => {
+  const devices = await prisma.device.findMany({ orderBy: { createdAt: "asc" } });
+  return c.json({ devices: devices.map(serializeDevice) }, 200);
+});
+
+adminApp.openapi(createDeviceRoute, async (c) => {
+  const { name } = c.req.valid("json");
+  // 平文トークンを返すのはこのレスポンス一度きり。DB にはハッシュのみ保存する。
+  const token = "sgd_" + randomBytes(32).toString("base64url");
+  const device = await prisma.device.create({
+    data: { name, tokenHash: createHash("sha256").update(token).digest("hex") },
+  });
+  return c.json({ device: serializeDevice(device), token }, 201);
+});
+
+adminApp.openapi(deleteDeviceRoute, async (c) => {
+  const { id } = c.req.valid("param");
+  const existing = await prisma.device.findUnique({ where: { id } });
+  if (!existing) return c.json({ error: "Not found" }, 404) as never;
+  await prisma.device.delete({ where: { id } });
+  return new Response(null, { status: 204 });
 });

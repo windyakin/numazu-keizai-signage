@@ -65,6 +65,15 @@ model PlaylistItem {
   @@index([playlistId, order])
 }
 
+model Device {
+  id              String    @id @default(cuid())
+  name            String
+  tokenHash       String    @unique // デバイストークンの SHA-256 (hex)。平文は保存しない
+  lastHeartbeatAt DateTime?
+  version         String?
+  createdAt       DateTime  @default(now())
+}
+
 model WeatherForecast {
   date        String   @id // "2026-05-31"（JST 基準の日付）
   dayOffset   Int // 0=今日, 1=明日, ...（並び順・抽出用）
