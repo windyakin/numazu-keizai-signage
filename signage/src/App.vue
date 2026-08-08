@@ -8,6 +8,7 @@ const IDLE_MS = 5000;
 let hideCursorTimer: ReturnType<typeof setTimeout> | null = null;
 
 const isFullscreenSlide = ref(false);
+const isWeatherStale = ref(false);
 
 function onMouseMove() {
   document.documentElement.classList.remove("cursor-hidden");
@@ -30,8 +31,8 @@ onUnmounted(() => {
 
 <template>
   <TopBar :class="{ 'topbar--collapsed': isFullscreenSlide }" />
-  <SlideArea @fullscreen-change="isFullscreenSlide = $event" />
-  <ConnectivityOverlay />
+  <SlideArea @fullscreen-change="isFullscreenSlide = $event" @weather-stale="isWeatherStale = $event" />
+  <ConnectivityOverlay :weather-stale="isWeatherStale" />
 </template>
 
 <style>

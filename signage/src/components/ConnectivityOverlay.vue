@@ -1,12 +1,22 @@
 <script setup lang="ts">
 import { useConnectivityStatus } from "../composables/useConnectivityStatus";
 
+withDefaults(
+  defineProps<{
+    weatherStale?: boolean;
+  }>(),
+  { weatherStale: false }
+);
+
 const { isWarning, isCritical } = useConnectivityStatus();
 </script>
 
 <template>
   <div v-if="isWarning" class="connectivity-dot" />
   <div v-if="isCritical" class="connectivity-text">オフラインです</div>
+  <div v-if="weatherStale" class="connectivity-text connectivity-text--weather">
+    オフラインが2日以上続いているため天気予報の表示をスキップしました
+  </div>
 </template>
 
 <style scoped>
@@ -44,5 +54,9 @@ const { isWarning, isCritical } = useConnectivityStatus();
   border-radius: 4px;
   z-index: 9999;
   pointer-events: none;
+}
+
+.connectivity-text--weather {
+  bottom: 48px;
 }
 </style>
