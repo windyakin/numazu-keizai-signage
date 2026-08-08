@@ -24,6 +24,12 @@ const emit = defineEmits<{
 const { now } = useClock();
 const WEATHER_STALE_MS = 2 * 24 * 60 * 60 * 1000;
 
+// State
+const playlistItems = ref<PlaylistItem[]>([]);
+const articles = ref<Article[]>([]);
+const rankingsData = ref<RankingsData>({ rankings: [], fetchedAt: null });
+const weatherData = ref<WeatherData>({ days: [], fetchedAt: null });
+
 const isWeatherStale = computed(() => {
   if (!weatherData.value.fetchedAt) return false;
   return now.value.getTime() - new Date(weatherData.value.fetchedAt).getTime() >= WEATHER_STALE_MS;
@@ -32,12 +38,6 @@ const isWeatherStale = computed(() => {
 watch(isWeatherStale, (val) => {
   emit("weatherStale", val);
 }, { immediate: true });
-
-// State
-const playlistItems = ref<PlaylistItem[]>([]);
-const articles = ref<Article[]>([]);
-const rankingsData = ref<RankingsData>({ rankings: [], fetchedAt: null });
-const weatherData = ref<WeatherData>({ days: [], fetchedAt: null });
 const currentIndex = ref(0);
 const randomArticle = ref<Article | null>(null);
 const loading = ref(true);
