@@ -10,6 +10,7 @@ import (
 
 	"github.com/windyakin/numazu-keizai-signage/edge/internal/config"
 	"github.com/windyakin/numazu-keizai-signage/edge/internal/store"
+	"github.com/windyakin/numazu-keizai-signage/edge/internal/sync"
 )
 
 // Refresher abstracts a syncer that can perform a one-shot refresh.
@@ -25,6 +26,7 @@ type Server struct {
 	playlistItems  *store.PlaylistItems
 	media          *store.Media
 	weather        *store.Weather
+	syncStatus     *sync.SyncStatus
 	articlesSyncer Refresher
 	rankingsSyncer Refresher
 	playlistSyncer Refresher
@@ -39,6 +41,7 @@ func New(
 	playlistItems *store.PlaylistItems,
 	media *store.Media,
 	weather *store.Weather,
+	syncStatus *sync.SyncStatus,
 	articlesSyncer Refresher,
 	rankingsSyncer Refresher,
 	playlistSyncer Refresher,
@@ -52,6 +55,7 @@ func New(
 		playlistItems:  playlistItems,
 		media:          media,
 		weather:        weather,
+		syncStatus:     syncStatus,
 		articlesSyncer: articlesSyncer,
 		rankingsSyncer: rankingsSyncer,
 		playlistSyncer: playlistSyncer,
@@ -74,6 +78,7 @@ func (s *Server) Handler() http.Handler {
 	r.Get("/api/signage/rankings", s.handleGetRankings)
 	r.Get("/api/signage/weather", s.handleGetWeather)
 	r.Get("/api/signage/playlist", s.handleGetPlaylist)
+	r.Get("/api/signage/status", s.handleGetStatus)
 	r.Post("/api/signage/playback", s.handlePostPlayback)
 	r.Post("/api/signage/refresh", s.handleRefresh)
 	r.Get("/media/*", s.handleGetMedia)

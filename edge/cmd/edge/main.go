@@ -52,10 +52,11 @@ func main() {
 		log.Printf("media verify: reset %d broken entries to pending", n)
 	}
 
-	articlesSyncer := sync.NewArticlesSyncer(cfg.UpstreamAPIURL, cfg.SignageAPIToken, articles, mediaSyncer, interval)
-	rankingsSyncer := sync.NewRankingsSyncer(cfg.UpstreamAPIURL, cfg.SignageAPIToken, rankings, mediaSyncer, interval)
-	playlistSyncer := sync.NewPlaylistSyncer(cfg.UpstreamAPIURL, cfg.SignageAPIToken, playlists, playlistItems, mediaSyncer, interval)
-	weatherSyncer := sync.NewWeatherSyncer(cfg.UpstreamAPIURL, cfg.SignageAPIToken, weather, interval)
+	syncStatus := sync.NewSyncStatus()
+	articlesSyncer := sync.NewArticlesSyncer(cfg.UpstreamAPIURL, cfg.SignageAPIToken, articles, mediaSyncer, interval, syncStatus)
+	rankingsSyncer := sync.NewRankingsSyncer(cfg.UpstreamAPIURL, cfg.SignageAPIToken, rankings, mediaSyncer, interval, syncStatus)
+	playlistSyncer := sync.NewPlaylistSyncer(cfg.UpstreamAPIURL, cfg.SignageAPIToken, playlists, playlistItems, mediaSyncer, interval, syncStatus)
+	weatherSyncer := sync.NewWeatherSyncer(cfg.UpstreamAPIURL, cfg.SignageAPIToken, weather, interval, syncStatus)
 	go mediaSyncer.Run(ctx)
 	go articlesSyncer.Run(ctx)
 	go rankingsSyncer.Run(ctx)
@@ -64,7 +65,7 @@ func main() {
 
 	srv := &http.Server{
 		Addr:    cfg.ListenAddr,
-		Handler: server.New(cfg, articles, rankings, playlists, playlistItems, media, weather, articlesSyncer, rankingsSyncer, playlistSyncer, weatherSyncer).Handler(),
+		Handler: server.New(cfg, articles, rankings, playlists, playlistItems, media, weather, syncStatus, articlesSyncer, rankingsSyncer, playlistSyncer, weatherSyncer).Handler(),
 	}
 
 	go func() {

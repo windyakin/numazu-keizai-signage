@@ -2,6 +2,7 @@
 import { onMounted, onUnmounted, ref } from "vue";
 import TopBar from "./components/layout/TopBar.vue";
 import SlideArea from "./components/layout/SlideArea.vue";
+import ConnectivityOverlay from "./components/ConnectivityOverlay.vue";
 
 const IDLE_MS = 5000;
 let hideCursorTimer: ReturnType<typeof setTimeout> | null = null;
@@ -30,6 +31,7 @@ onUnmounted(() => {
 <template>
   <TopBar :class="{ 'topbar--collapsed': isFullscreenSlide }" />
   <SlideArea @fullscreen-change="isFullscreenSlide = $event" />
+  <ConnectivityOverlay />
 </template>
 
 <style>

@@ -17,6 +17,7 @@ type PlaylistSyncer struct {
 	items     *store.PlaylistItems
 	media     *MediaSyncer
 	interval  time.Duration
+	status    *SyncStatus
 }
 
 func NewPlaylistSyncer(
@@ -25,6 +26,7 @@ func NewPlaylistSyncer(
 	items *store.PlaylistItems,
 	media *MediaSyncer,
 	interval time.Duration,
+	status *SyncStatus,
 ) *PlaylistSyncer {
 	return &PlaylistSyncer{
 		up:        newUpstream(baseURL, token),
@@ -32,18 +34,28 @@ func NewPlaylistSyncer(
 		items:     items,
 		media:     media,
 		interval:  interval,
+		status:    status,
 	}
 }
 
 // Refresh runs a single fetch synchronously. Media downloads are delegated to MediaSyncer.
 func (p *PlaylistSyncer) Refresh(ctx context.Context) error {
-	return p.once(ctx)
+	err := p.once(ctx)
+	if err != nil {
+		p.status.RecordError("playlist", err)
+	} else {
+		p.status.RecordSuccess("playlist")
+	}
+	return err
 }
 
 // Run blocks until ctx is cancelled. Fetches once immediately then every interval.
 func (p *PlaylistSyncer) Run(ctx context.Context) {
 	if err := p.once(ctx); err != nil {
 		log.Printf("playlist sync (initial): %v", err)
+		p.status.RecordError("playlist", err)
+	} else {
+		p.status.RecordSuccess("playlist")
 	}
 
 	t := time.NewTicker(p.interval)
@@ -55,6 +67,9 @@ func (p *PlaylistSyncer) Run(ctx context.Context) {
 		case <-t.C:
 			if err := p.once(ctx); err != nil {
 				log.Printf("playlist sync: %v", err)
+				p.status.RecordError("playlist", err)
+			} else {
+				p.status.RecordSuccess("playlist")
 			}
 		}
 	}
