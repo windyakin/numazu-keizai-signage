@@ -43,6 +43,7 @@ internal/server/server.go        chi ルーター・CORS ミドルウェア
 internal/server/articles.go      GET /api/signage/articles ハンドラ
 internal/server/rankings.go      GET /api/signage/rankings ハンドラ
 internal/server/weather.go       GET /api/signage/weather ハンドラ
+internal/server/status.go        GET /api/signage/status ハンドラ（同期ステータス）
 internal/server/playback.go      POST /api/signage/playback ハンドラ（signage 再生状況の受信）
 internal/store/schema.go         SQLite open・スキーマ初期化（WAL モード）
 internal/store/articles.go       articles テーブル操作（Sync / List / ListReady）。List 系は最新 15 件 cap
@@ -51,6 +52,7 @@ internal/store/weather.go        weather テーブル操作（Replace / List）�
 internal/store/playlists.go      playlists テーブル操作（Upsert / MarkActive / IncrementPlayCount / Cleanup / HasReported / Latest / List）
 internal/store/playlist.go       playlist_items テーブル操作（Replace(playlistId, ...) / List(playlistId)）
 internal/store/media.go          media_cache テーブル操作（Enqueue / MarkReady / MarkFailed / LocalPath / ListOrphans / Delete）
+internal/sync/status.go          SyncStatus: 各 syncer の最終同期成功/失敗時刻を追跡（スレッドセーフ）
 internal/sync/client.go          upstream HTTP クライアント（getJSON）
 internal/sync/articles.go        ArticlesSyncer（記事 pull → articles ID 差分同期 → メディア enqueue → media sweep）
 internal/sync/rankings.go        RankingsSyncer（ランキング pull → rankings replace → メディア enqueue → media sweep）
@@ -97,7 +99,7 @@ media_cache    (storage_key PK, local_path, mime_type, status, retries, download
 - 保存パス: `<MEDIA_DIR>/<sha256[0:2]>/<sha256[2:4]>/<sha256>.<ext>`（`sha256` は `imageKey` のハッシュ）
   - `ext` は `imageKey` のパス拡張子優先、なければ `Content-Type` から決定、それもなければ `.bin`
 - 書き込みは `.tmp` → rename のアトミック操作
-- 最大リトライ回数: 3（`MediaFailed` 状態で retries < 3 なら再試行）
+- リトライ: `failed` は終端状態ではない。`pending` / `failed` の行は drain（ticker 30 秒 + trigger）のたびに再試行され、`retries` は失敗回数の観測用カウンタとして増え続けるだけ。再試行が止まるのは参照が外れて Sweep が行ごと削除したときのみ
 - 並列ワーカー数: 4
 - **Sweep（孤児削除）**: `MediaSyncer.Sweep` は articles / rankings / playlist_items のいずれからも参照されなくなった `media_cache` 行と `<MEDIA_DIR>/...` の実ファイルを削除する。各 syncer (articles / rankings / playlist) の `once()` 末尾で呼び出し、参照テーブルが更新された直後に共通でクリーンアップが走る形にしている。`playlist_items` は `playlists` テーブルに存在する複数の playlist 行（=最新 fetch + signage が再生中の旧 playlist）を横断して保持されるため、signage が新プレイリストにスワップして `POST /api/signage/playback` を送るまで旧プレイリスト固有のメディアは削除されない。さらに **signage がまだ一度も `POST /api/signage/playback` を送っていない場合 (`HasReported() == false`) は Sweep を no-op にして抑止する**。
 
@@ -130,6 +132,7 @@ signage 側の API クライアント型 (`signage/src/api/articles.ts`, `rankin
 | GET | `/api/signage/rankings` | キャッシュ済みランキング（ready のみ） |
 | GET | `/api/signage/weather` | キャッシュ済み天気予報（`{days, fetchedAt}`。画像なし） |
 | GET | `/api/signage/playlist` | キャッシュ済みプレイリスト（最新 fetch を `{id, items}` で返す） |
+| GET | `/api/signage/status` | 上流同期ステータス（`{lastSuccess}` — 全 syncer の最終成功時刻のうち最も古い値。未成功時は `null`） |
 | POST | `/api/signage/playback` | signage の現在再生状況を受信 (`{playlistId, currentItemId, looped}`)。`is_active` 切替・`play_count++`・古い playlist の解放を行う |
 | POST | `/api/signage/refresh` | 上流 fetch を即時実行 |
 | GET | `/media/*` | キャッシュ済み画像の HTTP 配信 |

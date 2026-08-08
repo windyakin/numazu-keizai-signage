@@ -14,20 +14,25 @@ type RankingsSyncer struct {
 	rankings *store.Rankings
 	media    *MediaSyncer
 	interval time.Duration
+	status   *SyncStatus
 }
 
-func NewRankingsSyncer(baseURL, token string, rankings *store.Rankings, media *MediaSyncer, interval time.Duration) *RankingsSyncer {
+func NewRankingsSyncer(baseURL, token string, rankings *store.Rankings, media *MediaSyncer, interval time.Duration, status *SyncStatus) *RankingsSyncer {
 	return &RankingsSyncer{
 		up:       newUpstream(baseURL, token),
 		rankings: rankings,
 		media:    media,
 		interval: interval,
+		status:   status,
 	}
 }
 
 func (s *RankingsSyncer) Run(ctx context.Context) {
 	if err := s.once(ctx); err != nil {
 		log.Printf("rankings sync (initial): %v", err)
+		s.status.RecordError("rankings", err)
+	} else {
+		s.status.RecordSuccess("rankings")
 	}
 
 	t := time.NewTicker(s.interval)
@@ -39,6 +44,9 @@ func (s *RankingsSyncer) Run(ctx context.Context) {
 		case <-t.C:
 			if err := s.once(ctx); err != nil {
 				log.Printf("rankings sync: %v", err)
+				s.status.RecordError("rankings", err)
+			} else {
+				s.status.RecordSuccess("rankings")
 			}
 		}
 	}
@@ -46,7 +54,13 @@ func (s *RankingsSyncer) Run(ctx context.Context) {
 
 // Refresh runs a single fetch synchronously.
 func (s *RankingsSyncer) Refresh(ctx context.Context) error {
-	return s.once(ctx)
+	err := s.once(ctx)
+	if err != nil {
+		s.status.RecordError("rankings", err)
+	} else {
+		s.status.RecordSuccess("rankings")
+	}
+	return err
 }
 
 func (s *RankingsSyncer) once(ctx context.Context) error {

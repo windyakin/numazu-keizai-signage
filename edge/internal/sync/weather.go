@@ -13,19 +13,24 @@ type WeatherSyncer struct {
 	up       *upstream
 	weather  *store.Weather
 	interval time.Duration
+	status   *SyncStatus
 }
 
-func NewWeatherSyncer(baseURL, token string, weather *store.Weather, interval time.Duration) *WeatherSyncer {
+func NewWeatherSyncer(baseURL, token string, weather *store.Weather, interval time.Duration, status *SyncStatus) *WeatherSyncer {
 	return &WeatherSyncer{
 		up:       newUpstream(baseURL, token),
 		weather:  weather,
 		interval: interval,
+		status:   status,
 	}
 }
 
 func (s *WeatherSyncer) Run(ctx context.Context) {
 	if err := s.once(ctx); err != nil {
 		log.Printf("weather sync (initial): %v", err)
+		s.status.RecordError("weather", err)
+	} else {
+		s.status.RecordSuccess("weather")
 	}
 
 	t := time.NewTicker(s.interval)
@@ -37,6 +42,9 @@ func (s *WeatherSyncer) Run(ctx context.Context) {
 		case <-t.C:
 			if err := s.once(ctx); err != nil {
 				log.Printf("weather sync: %v", err)
+				s.status.RecordError("weather", err)
+			} else {
+				s.status.RecordSuccess("weather")
 			}
 		}
 	}
@@ -44,7 +52,13 @@ func (s *WeatherSyncer) Run(ctx context.Context) {
 
 // Refresh runs a single fetch synchronously.
 func (s *WeatherSyncer) Refresh(ctx context.Context) error {
-	return s.once(ctx)
+	err := s.once(ctx)
+	if err != nil {
+		s.status.RecordError("weather", err)
+	} else {
+		s.status.RecordSuccess("weather")
+	}
+	return err
 }
 
 func (s *WeatherSyncer) once(ctx context.Context) error {

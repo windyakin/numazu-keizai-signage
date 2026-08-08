@@ -14,14 +14,16 @@ type ArticlesSyncer struct {
 	articles *store.Articles
 	media    *MediaSyncer
 	interval time.Duration
+	status   *SyncStatus
 }
 
-func NewArticlesSyncer(baseURL, token string, articles *store.Articles, media *MediaSyncer, interval time.Duration) *ArticlesSyncer {
+func NewArticlesSyncer(baseURL, token string, articles *store.Articles, media *MediaSyncer, interval time.Duration, status *SyncStatus) *ArticlesSyncer {
 	return &ArticlesSyncer{
 		up:       newUpstream(baseURL, token),
 		articles: articles,
 		media:    media,
 		interval: interval,
+		status:   status,
 	}
 }
 
@@ -29,6 +31,9 @@ func NewArticlesSyncer(baseURL, token string, articles *store.Articles, media *M
 func (s *ArticlesSyncer) Run(ctx context.Context) {
 	if err := s.once(ctx); err != nil {
 		log.Printf("articles sync (initial): %v", err)
+		s.status.RecordError("articles", err)
+	} else {
+		s.status.RecordSuccess("articles")
 	}
 
 	t := time.NewTicker(s.interval)
@@ -40,6 +45,9 @@ func (s *ArticlesSyncer) Run(ctx context.Context) {
 		case <-t.C:
 			if err := s.once(ctx); err != nil {
 				log.Printf("articles sync: %v", err)
+				s.status.RecordError("articles", err)
+			} else {
+				s.status.RecordSuccess("articles")
 			}
 		}
 	}
@@ -47,7 +55,13 @@ func (s *ArticlesSyncer) Run(ctx context.Context) {
 
 // Refresh runs a single fetch synchronously.
 func (s *ArticlesSyncer) Refresh(ctx context.Context) error {
-	return s.once(ctx)
+	err := s.once(ctx)
+	if err != nil {
+		s.status.RecordError("articles", err)
+	} else {
+		s.status.RecordSuccess("articles")
+	}
+	return err
 }
 
 func (s *ArticlesSyncer) once(ctx context.Context) error {
