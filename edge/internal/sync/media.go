@@ -27,10 +27,7 @@ const (
 	qrKeyPrefix       = "qr/"
 )
 
-const (
-	mediaMaxRetries = 3
-	mediaWorkers    = 4
-)
+const mediaWorkers = 4
 
 type MediaSyncer struct {
 	media          *store.Media
@@ -114,7 +111,7 @@ func (m *MediaSyncer) Run(ctx context.Context) {
 }
 
 func (m *MediaSyncer) drain(ctx context.Context) {
-	entries, err := m.media.ListDownloadable(ctx, mediaMaxRetries)
+	entries, err := m.media.ListDownloadable(ctx)
 	if err != nil {
 		log.Printf("media drain list: %v", err)
 		return
