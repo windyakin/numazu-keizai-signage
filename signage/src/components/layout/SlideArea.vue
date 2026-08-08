@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed, onMounted, onUnmounted } from "vue";
+import { ref, computed, watch, onMounted, onUnmounted } from "vue";
 import {
   fetchPlaylist,
   reportPlayback,
@@ -9,6 +9,7 @@ import {
 import { fetchArticles, type Article } from "../../api/articles";
 import { fetchRankings, type RankingsData } from "../../api/rankings";
 import { fetchWeather, type WeatherData } from "../../api/weather";
+import { useClock } from "../../composables/useClock";
 import NewsArticleSlide from "../slides/NewsArticleSlide.vue";
 import RankingSlide from "../slides/RankingSlide.vue";
 import WeatherSlide from "../slides/WeatherSlide.vue";
@@ -17,7 +18,20 @@ import VideoSlide from "../slides/VideoSlide.vue";
 
 const emit = defineEmits<{
   (e: "fullscreenChange", value: boolean): void;
+  (e: "weatherStale", value: boolean): void;
 }>();
+
+const { now } = useClock();
+const WEATHER_STALE_MS = 2 * 24 * 60 * 60 * 1000;
+
+const isWeatherStale = computed(() => {
+  if (!weatherData.value.fetchedAt) return false;
+  return now.value.getTime() - new Date(weatherData.value.fetchedAt).getTime() >= WEATHER_STALE_MS;
+});
+
+watch(isWeatherStale, (val) => {
+  emit("weatherStale", val);
+}, { immediate: true });
 
 // State
 const playlistItems = ref<PlaylistItem[]>([]);
@@ -56,7 +70,7 @@ const currentItem = computed(() => playlistItems.value[currentIndex.value] ?? nu
 function isReady(item: PlaylistItem): boolean {
   if (item.type === "ARTICLE_LATEST" || item.type === "ARTICLE_RANDOM") return articles.value.length > 0;
   if (item.type === "RANKING") return rankingsData.value.rankings.length > 0;
-  if (item.type === "WEATHER") return weatherData.value.days.length > 0;
+  if (item.type === "WEATHER") return weatherData.value.days.length > 0 && !isWeatherStale.value;
   return item.payload !== null;
 }
 

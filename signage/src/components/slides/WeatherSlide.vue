@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed } from "vue";
 import type { WeatherDay } from "../../api/weather";
+import { useClock } from "../../composables/useClock";
 import WeatherIcon from "../WeatherIcon.vue";
 
 const props = defineProps<{
@@ -8,10 +9,22 @@ const props = defineProps<{
   fetchedAt: string | null;
 }>();
 
+const { now } = useClock();
+
+function computeDayOffset(dateStr: string): number {
+  const target = parseDate(dateStr);
+  const today = new Date(now.value.getFullYear(), now.value.getMonth(), now.value.getDate());
+  return Math.round((target.getTime() - today.getTime()) / (24 * 60 * 60 * 1000));
+}
+
+const validDays = computed(() =>
+  props.days.filter((day) => computeDayOffset(day.date) >= 0)
+);
+
 // 上半分: 今日・明日（先頭2件）
-const featured = computed(() => props.days.slice(0, 2));
+const featured = computed(() => validDays.value.slice(0, 2));
 // 右 1/3: 週間（今日・明日は大カードに出ているので明後日以降、2x2 で最大4日）
-const week = computed(() => props.days.slice(2, 6));
+const week = computed(() => validDays.value.slice(2, 6));
 
 const fetchedHour = computed(() => {
   if (!props.fetchedAt) return null;
@@ -27,8 +40,9 @@ function parseDate(date: string): Date {
 }
 
 function featuredLabel(day: WeatherDay): string {
-  if (day.dayOffset === 0) return "今日";
-  if (day.dayOffset === 1) return "明日";
+  const offset = computeDayOffset(day.date);
+  if (offset === 0) return "今日";
+  if (offset === 1) return "明日";
   return weekdayLabel(day.date);
 }
 
