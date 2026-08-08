@@ -45,14 +45,17 @@ func (m *Media) Enqueue(ctx context.Context, storageKey, mimeType string) error 
 	return err
 }
 
-// ListDownloadable returns entries that need to be (re)downloaded:
-// pending, or failed with retries < maxRetries.
-func (m *Media) ListDownloadable(ctx context.Context, maxRetries int) ([]MediaEntry, error) {
+// ListDownloadable returns entries that need to be (re)downloaded: pending or
+// failed. failed is not a terminal state — entries are retried on every drain
+// as long as they exist; retries only records how often a download has failed
+// for observability. Rows for keys that are no longer referenced are removed
+// by Sweep, which is what ultimately stops retrying.
+func (m *Media) ListDownloadable(ctx context.Context) ([]MediaEntry, error) {
 	rows, err := m.db.QueryContext(ctx, `
 		SELECT storage_key, local_path, mime_type, status, retries
 		FROM media_cache
-		WHERE status = ? OR (status = ? AND retries < ?)
-	`, MediaPending, MediaFailed, maxRetries)
+		WHERE status = ? OR status = ?
+	`, MediaPending, MediaFailed)
 	if err != nil {
 		return nil, err
 	}
