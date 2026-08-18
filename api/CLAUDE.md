@@ -20,7 +20,7 @@ api/
 │   │   ├── auth.ts            # /api/auth/* (Auth0 OIDC ログイン/コールバック/ログアウト/me)
 │   │   └── media.ts           # /api/signage/media など
 │   ├── middleware/            # Hono ミドルウェア
-│   │   ├── signageAuth.ts     # edge ↔ api の共有シークレット Bearer 認証
+│   │   ├── signageAuth.ts     # edge ↔ api の Bearer 認証 (デバイス個別トークン → 共有シークレットの順で照合)
 │   │   └── adminAuth.ts       # /api/admin/* の Auth0 セッション Cookie ガード
 │   └── jobs/                  # 定期実行ジョブ
 │       ├── articlesFetcher.ts # 記事一覧取得
@@ -88,7 +88,8 @@ api/
 | `FEED_URL` | 必須 | フィード POST 先。未設定だとジョブが throw |
 | `FEED_IMAGE_BASE_URL` | 必須 | `{base}/{image}` で画像 URL を組み立てる |
 | `ACCESS_URL` | 必須 | アクセスランキング POST 先 |
-| `SIGNAGE_API_TOKEN` | 本番必須 | edge ↔ api 認証の共有シークレット。`/api/signage/*` の Bearer 検証に使う。未設定時は警告ログ + 認証スキップ (移行用 fail-open) |
+| `SIGNAGE_API_TOKEN` | 本番必須 | edge ↔ api 認証の共有シークレット。`/api/signage/*` の Bearer 検証のフォールバックに使う（デバイス個別トークンの照合が先）。未設定時は警告ログ + 共有シークレット認証スキップ (移行用 fail-open) |
+| `DEVICE_OFFLINE_THRESHOLD_SEC` | 任意 | デバイスをオフライン判定する最終ハートビートからの経過秒数。デフォルト 180 (ハートビート間隔 60 秒の 3 倍)。判定は `/api/admin/devices` 参照時に導出 |
 | `OIDC_ISSUER` / `OIDC_CLIENT_ID` / `OIDC_CLIENT_SECRET` / `OIDC_AUTH_SECRET` | admin 認証に必須 | Auth0 (OIDC) 認可コードフロー用。この 4 つが揃わないと `adminAuth` は fail-open で `/api/admin/*` を素通りさせる |
 | `OIDC_REDIRECT_URI` | 任意 | コールバック URL。既定 `/callback`。本実装は `/api/auth/callback` を使うので明示設定する。Auth0 の Allowed Callback URLs にも登録 |
 | `OIDC_SCOPES` / `OIDC_AUDIENCE` | 任意 | 既定 scope は `openid profile email`。AUDIENCE は api 向けアクセストークンが必要な場合のみ |

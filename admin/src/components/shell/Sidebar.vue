@@ -37,6 +37,7 @@ const items = computed<NavItem[]>(() => [
   { label: 'メディアライブラリ', icon: 'pi pi-images', route: '/media' },
   { label: 'ニュース', icon: 'pi pi-file', route: '/articles' },
   { label: '天気', icon: 'pi pi-cloud', route: '/weather' },
+  { label: 'デバイス', icon: 'pi pi-desktop', route: '/devices' },
 ])
 
 function isActive(itemRoute: string): boolean {

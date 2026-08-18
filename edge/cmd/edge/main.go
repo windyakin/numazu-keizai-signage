@@ -16,6 +16,10 @@ import (
 	"github.com/windyakin/numazu-keizai-signage/edge/internal/sync"
 )
 
+// version はビルド時に -ldflags "-X main.version=..." で上書きできる。
+// ハートビートで上流 api に報告される。
+var version = "dev"
+
 func main() {
 	cfg, err := config.Load()
 	if err != nil {
@@ -62,6 +66,15 @@ func main() {
 	go rankingsSyncer.Run(ctx)
 	go playlistSyncer.Run(ctx)
 	go weatherSyncer.Run(ctx)
+
+	// ハートビートはデバイス個別トークンでの認証が前提。トークン未設定では
+	// api 側でデバイスを特定できず 401 になるだけなので起動しない。
+	if cfg.SignageAPIToken != "" {
+		heartbeatSyncer := sync.NewHeartbeatSyncer(cfg.UpstreamAPIURL, cfg.SignageAPIToken, time.Duration(cfg.HeartbeatIntervalSec)*time.Second, version)
+		go heartbeatSyncer.Run(ctx)
+	} else {
+		log.Printf("heartbeat disabled: SIGNAGE_API_TOKEN is not set")
+	}
 
 	srv := &http.Server{
 		Addr:    cfg.ListenAddr,
