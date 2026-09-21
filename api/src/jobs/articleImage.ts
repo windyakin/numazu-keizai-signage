@@ -19,16 +19,27 @@ function pickExtension(filename: string): string | null {
 }
 
 /**
- * 外部フィードの記事画像を S3 (RustFS) にキャッシュし、対応する MediaFile レコードの id を返す。
+ * 外部画像を S3 (RustFS) にキャッシュし、対応する MediaFile レコードの id を返す。
  * MediaFile テーブルの存在で S3 上の保存有無を判定する (HEAD 不要)。失敗時は null を返す。
+ *
+ * @param articleId 記事 ID (storageKey の組み立てに使う)
+ * @param imageUrl  画像の完全 URL (例: "https://images.keizai.biz/izu_keizai/headline/xxx.jpg")
  */
 export async function cacheArticleImage(
   articleId: string,
-  sourceFilename: string
+  imageUrl: string
 ): Promise<string | null> {
-  if (!sourceFilename) return null;
+  if (!imageUrl) return null;
 
-  const ext = pickExtension(sourceFilename);
+  let pathname: string;
+  try {
+    pathname = new URL(imageUrl).pathname;
+  } catch {
+    console.error(`[articleImage] invalid URL: ${imageUrl}`);
+    return null;
+  }
+
+  const ext = pickExtension(pathname);
   if (!ext) return null;
 
   const storageKey = `articles/${articleId}${ext}`;
@@ -37,22 +48,15 @@ export async function cacheArticleImage(
   const existing = await prisma.mediaFile.findUnique({ where: { storageKey } });
   if (existing) return existing.id;
 
-  const imageBaseUrl = process.env.FEED_IMAGE_BASE_URL;
-  if (!imageBaseUrl) {
-    console.error("[articleImage] FEED_IMAGE_BASE_URL is not set");
-    return null;
-  }
-
-  const sourceUrl = `${imageBaseUrl.replace(/\/+$/, "")}/${sourceFilename.replace(/^\/+/, "")}`;
   let response: Response;
   try {
-    response = await fetch(sourceUrl);
+    response = await fetch(imageUrl);
   } catch (e) {
-    console.error(`[articleImage] fetch ${sourceUrl}:`, e);
+    console.error(`[articleImage] fetch ${imageUrl}:`, e);
     return null;
   }
   if (!response.ok) {
-    console.error(`[articleImage] fetch ${sourceUrl}: status ${response.status}`);
+    console.error(`[articleImage] fetch ${imageUrl}: status ${response.status}`);
     return null;
   }
 
@@ -74,15 +78,12 @@ export async function cacheArticleImage(
         storageKey,
         mimeType,
         type: "ARTICLE",
-        originalName: sourceFilename,
+        originalName: pathname.split("/").pop() ?? imageUrl,
         sizeBytes: BigInt(buffer.byteLength),
       },
     });
     return created.id;
   } catch (e) {
-    // articles / rankings ジョブが同じ記事画像 (storageKey 共有) を並行処理すると
-    // findUnique をすり抜けて両方が create に到達しうる。ユニーク制約違反 (P2002) は
-    // 「他方が先に作成した」だけなので、既存レコードを引き直して返す。
     if (e instanceof Prisma.PrismaClientKnownRequestError && e.code === "P2002") {
       const existing = await prisma.mediaFile.findUnique({ where: { storageKey } });
       if (existing) return existing.id;

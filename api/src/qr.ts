@@ -8,14 +8,17 @@
 
 /**
  * 記事 ID から公開ページ URL を組み立てる。FEED_URL 未設定なら null。
- * FEED_URL はフィード取得用の `.php` 付きエンドポイント (例: `.../headline.php`) だが、
- * 公開ページは拡張子なしの `.../headline/{id}/` でアクセスできるため末尾の `.php` を落とす。
+ * FEED_URL のオリジン部分を取り出し `/headline/{id}/` を付与する。
  */
 export function buildArticleUrl(id: string): string | null {
   const base = process.env.FEED_URL;
   if (!base) return null;
-  const cleaned = base.replace(/\/+$/, "").replace(/\.php$/i, "");
-  return `${cleaned}/${id}/`;
+  try {
+    const origin = new URL(base).origin;
+    return `${origin}/headline/${id}/`;
+  } catch {
+    return null;
+  }
 }
 
 /** 対象 URL から edge 同期用の QR キーを導出する (`qr/{base64url(url)}`)。 */
