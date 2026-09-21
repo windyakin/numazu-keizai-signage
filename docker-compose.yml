@@ -35,10 +35,9 @@ services:
     build: ./api
     environment:
       DATABASE_URL: postgresql://signage:signage@postgres:5432/signage
-      FEED_URL: ${FEED_URL}
-      FEED_IMAGE_BASE_URL: ${FEED_IMAGE_BASE_URL}
+      FEED_URL: ${FEED_URL:-https://izu.keizai.biz/rss.xml}
       FEED_FETCH_INTERVAL_MIN: ${FEED_FETCH_INTERVAL_MIN:-30}
-      ACCESS_URL: ${ACCESS_URL}
+      ACCESS_URL: ${ACCESS_URL:-https://izu.keizai.biz/access/}
       SIGNAGE_API_TOKEN: ${SIGNAGE_API_TOKEN}
       OIDC_ISSUER: ${OIDC_ISSUER}
       OIDC_CLIENT_ID: ${OIDC_CLIENT_ID}

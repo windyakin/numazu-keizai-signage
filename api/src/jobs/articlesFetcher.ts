@@ -2,106 +2,149 @@ import { parse } from "node-html-parser";
 import { prisma } from "../db.js";
 import { cacheArticleImage } from "./articleImage.js";
 
-async function fetchArticleDescription(articlesUrl: string, id: string): Promise<string | null> {
-  const articleUrl = `${articlesUrl.replace(/\/+$/, "")}/${id}/`;
+interface RssArticle {
+  id: string;
+  title: string;
+  description: string | null;
+  link: string;
+  pubDate: Date;
+}
+
+/**
+ * RSS XML をパースして記事一覧を返す。
+ * node-html-parser は <link> を void 要素として扱うため、regex で抽出する。
+ */
+function parseRss(xml: string): RssArticle[] {
+  const articles: RssArticle[] = [];
+  const itemRegex = /<item>([\s\S]*?)<\/item>/g;
+  let match;
+  while ((match = itemRegex.exec(xml)) !== null) {
+    const block = match[1];
+    const title = block.match(/<title>([\s\S]*?)<\/title>/)?.[1]?.trim() ?? "";
+    const link = block.match(/<link>([\s\S]*?)<\/link>/)?.[1]?.trim() ?? "";
+    const desc = block.match(/<description>([\s\S]*?)<\/description>/)?.[1]?.trim() ?? null;
+    const pubDateStr = block.match(/<pubDate>([\s\S]*?)<\/pubDate>/)?.[1]?.trim() ?? "";
+
+    const idMatch = link.match(/\/headline\/(\d+)\/?/);
+    if (!idMatch) continue;
+
+    articles.push({
+      id: idMatch[1],
+      title,
+      description: desc?.replace(/\s*#沼津経済新聞\s*$/, "") ?? null,
+      link: link.replace(/^http:/, "https:"),
+      pubDate: new Date(pubDateStr),
+    });
+  }
+  return articles;
+}
+
+/**
+ * 記事ページから og:image の URL を返す。取得失敗時は null。
+ */
+export async function fetchArticleOgImage(articleUrl: string): Promise<string | null> {
   try {
     const res = await fetch(articleUrl);
     if (!res.ok) return null;
     const root = parse(await res.text());
-    return root.querySelector('meta[name="description"]')?.getAttribute("content") ?? null;
+    return root.querySelector('meta[property="og:image"]')?.getAttribute("content") ?? null;
   } catch {
     return null;
   }
 }
 
-interface ArticleItem {
-  id: string;
-  title: string;
-  image: string;
-  photo: string;
-  ytid: string | null;
-  start: string;
-  published: string | null;
-}
+/**
+ * 記事ページからメタ情報をまとめて取得する。ランキング経由の新規記事作成にも使う。
+ */
+export async function fetchArticlePageMeta(articleUrl: string): Promise<{
+  title: string | null;
+  description: string | null;
+  imageUrl: string | null;
+  start: Date | null;
+}> {
+  try {
+    const res = await fetch(articleUrl);
+    if (!res.ok) return { title: null, description: null, imageUrl: null, start: null };
+    const root = parse(await res.text());
 
-interface ArticlesResponse {
-  items: ArticleItem[];
-  cp: {
-    category: string;
-    limit: number;
-    from: number;
-    next: string;
-  };
+    const title = root.querySelector("h1:not(.logo h1)")?.text?.trim() ?? null;
+    const description =
+      root.querySelector('meta[name="description"]')?.getAttribute("content") ?? null;
+    const imageUrl =
+      root.querySelector('meta[property="og:image"]')?.getAttribute("content") ?? null;
+
+    let start: Date | null = null;
+    const timeText = root.querySelector("time")?.text?.trim();
+    if (timeText) {
+      const d = new Date(timeText.replace(/\./g, "-"));
+      if (!isNaN(d.getTime())) start = d;
+    }
+
+    return { title, description, imageUrl, start };
+  } catch {
+    return { title: null, description: null, imageUrl: null, start: null };
+  }
 }
 
 export async function fetchArticles(): Promise<number> {
-  const articlesUrl = process.env.FEED_URL;
-  const imageBaseUrl = process.env.FEED_IMAGE_BASE_URL;
-
-  if (!articlesUrl) {
+  const feedUrl = process.env.FEED_URL;
+  if (!feedUrl) {
     throw new Error("FEED_URL is not set");
   }
-  if (!imageBaseUrl) {
-    throw new Error("FEED_IMAGE_BASE_URL is not set");
-  }
 
-  const response = await fetch(articlesUrl, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/x-www-form-urlencoded; charset=UTF-8",
-      "X-Requested-With": "XMLHttpRequest",
-    },
-    body: "mode=async&category=headline&limit=30&from=1",
-  });
+  const response = await fetch(feedUrl);
   if (!response.ok) {
     throw new Error(`Articles fetch failed: ${response.status} ${response.statusText}`);
   }
 
-  const data: ArticlesResponse = await response.json();
+  const xml = await response.text();
+  const articles = parseRss(xml);
 
-  for (const item of data.items) {
-    const mediaFileId = await cacheArticleImage(item.id, item.photo || item.image);
-    const start = new Date(item.start.replace(" ", "T") + "+09:00");
+  for (const article of articles) {
+    // 既存記事で画像取得済みなら記事ページへの fetch をスキップ
+    const existing = await prisma.article.findUnique({
+      where: { id: article.id },
+      select: { mediaFileId: true },
+    });
+
+    let mediaFileId = existing?.mediaFileId ?? null;
+    if (!mediaFileId) {
+      const imageUrl = await fetchArticleOgImage(article.link);
+      if (imageUrl) {
+        mediaFileId = await cacheArticleImage(article.id, imageUrl);
+      }
+    }
 
     await prisma.article.upsert({
-      where: { id: item.id },
+      where: { id: article.id },
       update: {
-        title: item.title,
+        title: article.title,
         mediaFileId,
-        start,
+        start: article.pubDate,
+        description: article.description,
         fetchedAt: new Date(),
       },
       create: {
-        id: item.id,
-        title: item.title,
+        id: article.id,
+        title: article.title,
         mediaFileId,
-        start,
+        start: article.pubDate,
+        description: article.description,
         fetchedAt: new Date(),
       },
     });
   }
 
-  // description が未取得の記事を逐次フェッチ
-  const noDesc = await prisma.article.findMany({ where: { description: null } });
-  for (const article of noDesc) {
-    const description = await fetchArticleDescription(articlesUrl, article.id);
-    if (description !== null) {
-      await prisma.article.update({ where: { id: article.id }, data: { description } });
-    }
-  }
-
-  return data.items.length;
+  return articles.length;
 }
 
 export function startArticlesJob(): void {
   const intervalMin = parseInt(process.env.FEED_FETCH_INTERVAL_MIN || "30", 10);
 
-  // 起動時に1回即時実行
   fetchArticles()
     .then((count) => console.log(`[articlesFetcher] Initial fetch: ${count} articles`))
     .catch((err) => console.error("[articlesFetcher] Initial fetch failed:", err));
 
-  // 定期実行
   setInterval(() => {
     fetchArticles()
       .then((count) => console.log(`[articlesFetcher] Fetched ${count} articles`))
